@@ -152,6 +152,7 @@ model EventNote {
 /// Activities can have segments, feedback questions, and extracted injury information.
 model EventActivity {
   garminPersonalItems GarminPersonalItem[]
+  file                EventActivityFile?
   // primary key
   eventActivityId Int @id @default(autoincrement()) @map("event_activity_id")
 
@@ -282,6 +283,30 @@ model EventActivityWeather {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("event_activity_weather")
+}
+
+/// Original device file of an imported activity (FIT), kept so it can be
+/// downloaded again. In its own table: the bytes stay out of every query that
+/// lists activities.
+model EventActivityFile {
+  // primary key
+  eventActivityFileId Int @id @default(autoincrement()) @map("event_activity_file_id")
+
+  // fields
+  /// File format, FIT for now
+  fileType String @default("FIT") @map("file_type")
+  /// Size in bytes
+  size     Int
+  content  Bytes
+
+  // relationships
+  eventActivity   EventActivity @relation(fields: [eventActivityId], references: [eventActivityId], onDelete: Cascade)
+  eventActivityId Int           @unique @map("event_activity_id")
+
+  // timestamps
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("event_activity_file")
 }
 
 /// Activity normalization data.

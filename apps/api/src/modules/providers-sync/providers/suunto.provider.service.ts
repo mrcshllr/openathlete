@@ -24,6 +24,7 @@ import { ActivityStream, ApiEnvSchemaType } from '@openathlete/shared';
 import { streamUpdate } from 'src/modules/core/helpers/activity-corrections';
 
 import { ActivityFileParserService } from '../../core/helpers/activity-file-parser.service';
+import { saveActivityOriginalFile } from '../../core/helpers/activity-original-file';
 import { FitFileSegment } from '../../core/helpers/activity-parser.interface';
 import {
   calculateSegmentMetrics,
@@ -845,6 +846,13 @@ export class SuuntoProviderService
             },
           );
         },
+      );
+
+      // Kept as received, so the athlete can download it again
+      await saveActivityOriginalFile(
+        this.prisma,
+        activity.eventActivityId,
+        Buffer.from(response.data),
       );
 
       const parseResult = await this.activityFileParserService.parseByFileType(
