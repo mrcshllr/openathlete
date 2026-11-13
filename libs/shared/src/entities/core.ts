@@ -130,6 +130,14 @@ export interface PlannedSession {
   workout?: Workout;
 }
 
+/** The device file an activity was imported from */
+export interface ActivityOriginalFile {
+  /** Its format, FIT for now */
+  fileType: string;
+  /** In bytes */
+  size: number;
+}
+
 export type ActivityEvent = Omit<
   PrismaEvent,
   'type' | 'activity' | 'training' | 'competition' | 'note'
@@ -146,6 +154,11 @@ export type ActivityEvent = Omit<
     trainingLoad?: number | null;
     /** Only when the activity is read on its own */
     plannedSession?: PlannedSession;
+    /**
+     * The device file the activity was imported from, when it was kept and
+     * can be downloaded. Only when the activity is read on its own
+     */
+    originalFile?: ActivityOriginalFile;
   };
 
 export type Event =

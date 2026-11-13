@@ -60,6 +60,7 @@ export const accountFixtureSql = [
   `INSERT INTO activity_feedback_question (question_text, event_activity_id, updated_at) VALUES ('How was it?', 3501, ${now})`,
   `INSERT INTO activity_feedback_embedding (text_content, embedding, event_activity_id, updated_at) VALUES ('felt good', array_fill(0, ARRAY[1536])::vector, 3501, ${now})`,
   `INSERT INTO activity_segment (segment_type, order_index, start_time_seconds, end_time_seconds, event_activity_id, updated_at) VALUES ('LAP', 0, 0, 300, 3501, ${now})`,
+  `INSERT INTO event_activity_file (size, content, event_activity_id) VALUES (4, '\\x2e464954', 3501)`,
   `UPDATE athlete_injury SET source_activity_id = 3501 WHERE athlete_id = 2001`,
   `INSERT INTO training_load_calculation (training_load_calculation_id, type, athlete_id, updated_at) VALUES (3701, 'TRIMP', 2001, ${now})`,
   `INSERT INTO training_load_entry (date, value, calculation_id, activity_id, updated_at) VALUES ('2026-01-06', 80, 3701, 3501, ${now})`,
