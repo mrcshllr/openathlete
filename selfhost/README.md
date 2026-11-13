@@ -14,13 +14,17 @@ die Branches aus [`patches.txt`](patches.txt).
 
 ## Auf dem NAS
 
-Einmalig, als Aufgabe im DSM-Aufgabenplaner (Benutzer `root`):
+Eine Aufgabe im DSM-Aufgabenplaner, Benutzer `root`, täglich 05:00 (nach dem
+nächtlichen Build). Sie richtet beim ersten Lauf ein und macht danach jede
+Nacht Backup und Update:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/mrcshllr/openathlete/selfhost/selfhost/synology/install.sh | sh -s /volume1/docker/openathlete
+curl -fsSL https://raw.githubusercontent.com/mrcshllr/openathlete/selfhost/selfhost/synology/install.sh | sh -s /volume1/docker/openathlete && /volume1/docker/openathlete/update.sh; tail -n 30 /volume1/docker/openathlete/update.log
 ```
 
-Danach `/volume1/docker/openathlete/.env` ausfüllen und `update.sh` ausführen.
+Die Oberfläche läuft auf `http://192.168.1.4:9999`, öffentlich über den
+Cloudflare Tunnel unter `https://training.marcushaller.de`. Einstellungen in
+`/volume1/docker/openathlete/.env`.
 
 | Skript | Zweck |
 | --- | --- |
