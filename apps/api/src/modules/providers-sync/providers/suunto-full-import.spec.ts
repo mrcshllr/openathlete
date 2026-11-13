@@ -41,10 +41,11 @@ function workout(key: string, startTime: number) {
   return { workoutKey: key, startTime, totalTime: 600, activityId: 1 };
 }
 
-function setup() {
+function setup(saved: unknown[] = []) {
   const prisma = {
     providerAccount: { findUnique: jest.fn().mockResolvedValue(account) },
-    eventActivity: { findMany: jest.fn().mockResolvedValue([]) },
+    eventActivity: { findMany: jest.fn().mockResolvedValue(saved) },
+    event: { update: jest.fn() },
   };
   const queue = {
     addActivityImportJobs: jest.fn(),
@@ -56,7 +57,7 @@ function setup() {
     queue as unknown as QueueService,
     {} as ActivityFileParserService,
   );
-  return { service, queue };
+  return { service, queue, prisma };
 }
 
 function quotaError() {
@@ -126,5 +127,51 @@ describe('SuuntoProviderService history import', () => {
     expect(error).toBeInstanceOf(ProviderRateLimitError);
     expect((error as ProviderRateLimitError).retryAfterMs).toBe(120_000);
     expect(queue.addActivityImportJobs).not.toHaveBeenCalled();
+  });
+
+  it('names an activity after the title written in the Suunto app', async () => {
+    const { service, queue } = setup();
+    get.mockResolvedValueOnce({
+      data: {
+        error: null,
+        payload: [
+          {
+            ...workout('titled', Date.now()),
+            workoutName: 'Trail running',
+            description: '  Zugspitze über Höllental \n zweite Zeile',
+          },
+          { ...workout('plain', Date.now()), workoutName: 'Running' },
+        ],
+      },
+    });
+
+    await service.queueFullImport(account);
+
+    expect(
+      queue.addActivityImportJobs.mock.calls[0][1].map(
+        (activity: { name: string }) => activity.name,
+      ),
+    ).toEqual(['Zugspitze über Höllental', 'Running']);
+  });
+
+  it('gives the title to an activity saved under the name of Suunto, not to a renamed one', async () => {
+    const { service, prisma } = setup([
+      { externalId: 'generic', eventId: 11, event: { name: 'Trail running' } },
+      { externalId: 'renamed', eventId: 12, event: { name: 'Mein Lauf' } },
+    ]);
+    const titled = (key: string) => ({
+      ...workout(key, Date.now()),
+      workoutName: 'Trail running',
+      description: 'Zugspitze über Höllental',
+    });
+    get.mockResolvedValueOnce({
+      data: { error: null, payload: [titled('generic'), titled('renamed')] },
+    });
+
+    await service.queueFullImport(account);
+
+    expect(prisma.event.update.mock.calls).toEqual([
+      [{ where: { eventId: 11 }, data: { name: 'Zugspitze über Höllental' } }],
+    ]);
   });
 });

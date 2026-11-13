@@ -40,7 +40,12 @@ import {
   roundMetricValue,
   roundSpeed,
 } from '../../core/helpers/round-activity-values';
-import { mapSuuntoWorkoutToSportType } from '../../core/helpers/suunto';
+import {
+  mapSuuntoWorkoutToSportType,
+  suuntoActivityName,
+  suuntoGenericName,
+  suuntoWorkoutTitle,
+} from '../../core/helpers/suunto';
 import {
   SuuntoAggregatedActivityData,
   SuuntoDailyActivityEntry,
@@ -713,6 +718,7 @@ export class SuuntoProviderService
     const missingStream =
       existing &&
       (!existing.stream || Object.keys(existing.stream as object).length === 0);
+    if (existing) await this.applyTitles([activity]);
     if (existing && !missingStream) {
       return { activity: existing, created: false };
     }
@@ -969,6 +975,7 @@ export class SuuntoProviderService
         externalId: true,
       },
     });
+    await this.applyTitles(activities);
 
     const existingIdsSet = new Set(
       existingExternalIds.map((a) => a.externalId),
@@ -987,6 +994,41 @@ export class SuuntoProviderService
 
     await this.queueService.addActivityImportJobs(account, newActivities, true);
     return newActivities.length;
+  }
+
+  /**
+   * Gives the activities already saved the title their athlete wrote in the
+   * Suunto app, when they still carry Suunto's own name: imported before the
+   * title was read, or titled since. A name changed in OpenAthlete stays.
+   */
+  private async applyTitles(activities: ImportedActivity[]): Promise<void> {
+    const titled = activities.flatMap((activity) => {
+      const workout = activity.raw as SuuntoLimitedWorkout;
+      const title = suuntoWorkoutTitle(workout);
+      return title ? [{ workout, title }] : [];
+    });
+    if (titled.length === 0) return;
+
+    const saved = await this.prisma.eventActivity.findMany({
+      where: {
+        provider: ConnectorProvider.SUUNTO,
+        externalId: { in: titled.map(({ workout }) => workout.workoutKey) },
+      },
+      select: {
+        externalId: true,
+        eventId: true,
+        event: { select: { name: true } },
+      },
+    });
+    const names = new Map(saved.map((row) => [row.externalId, row]));
+    for (const { workout, title } of titled) {
+      const row = names.get(workout.workoutKey);
+      if (!row || row.event.name !== suuntoGenericName(workout)) continue;
+      await this.prisma.event.update({
+        where: { eventId: row.eventId },
+        data: { name: title },
+      });
+    }
   }
 
   /**
@@ -1166,7 +1208,7 @@ export class SuuntoProviderService
     const startDate = new Date(workout.startTime);
     return {
       externalId: workout.workoutKey,
-      name: workout.workoutName || `Suunto Workout ${workout.workoutKey}`,
+      name: suuntoActivityName(workout),
       startDate,
       endDate: workout.stopTime
         ? new Date(workout.stopTime)

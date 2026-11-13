@@ -485,6 +485,8 @@ export interface SuuntoLimitedWorkout {
   activityId: number;
   workoutKey: string;
   workoutName?: string;
+  /** What the athlete wrote about the workout in the Suunto app: its title */
+  description?: string | null;
   startTime: number; // milliseconds since epoch
   stopTime?: number; // milliseconds since epoch
   totalTime: number; // seconds

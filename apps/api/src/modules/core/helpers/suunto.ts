@@ -268,3 +268,39 @@ export const mapSuuntoWorkoutToSportType = (workout: {
   // Default fallback
   return SportType.OTHER;
 };
+
+const SUUNTO_NAME_MAX = 100;
+
+/** The name an activity got before the athlete's own title was read */
+export function suuntoGenericName(workout: {
+  workoutKey: string;
+  workoutName?: string;
+}): string {
+  return workout.workoutName || `Suunto Workout ${workout.workoutKey}`;
+}
+
+/**
+ * The title the athlete gave a workout in the Suunto app, which Suunto keeps
+ * in its description: the first line, cut to the length of a name.
+ */
+export function suuntoWorkoutTitle(workout: {
+  description?: string | null;
+}): string | null {
+  const line = (workout.description ?? '')
+    .split(/\r?\n/)
+    .map((part) => part.trim())
+    .find((part) => part.length > 0);
+  if (!line) return null;
+  return line.length > SUUNTO_NAME_MAX
+    ? `${line.slice(0, SUUNTO_NAME_MAX - 1).trimEnd()}…`
+    : line;
+}
+
+/** The athlete's title when there is one, else Suunto's name of the workout */
+export function suuntoActivityName(workout: {
+  workoutKey: string;
+  workoutName?: string;
+  description?: string | null;
+}): string {
+  return suuntoWorkoutTitle(workout) ?? suuntoGenericName(workout);
+}
