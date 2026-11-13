@@ -39,6 +39,7 @@ const EXPORTED_TABLES = [
   'athlete_settings',
   'club_member',
   'coach_athlete',
+  'coach_metric_threshold',
   'coach_activity_alert_settings',
   'coach_note',
   'coach_notebook',
@@ -53,6 +54,7 @@ const EXPORTED_TABLES = [
   'message',
   'provider_account',
   'record',
+  'scheduled_message',
   'subscription',
   'training_load_calculation',
   'training_plan',
@@ -64,6 +66,7 @@ const NOT_EXPORTED_TABLES = {
   activity_chat_notice:
     'automatic delivery/suppression receipts, not human-authored content',
   athlete_invitation: 'pending invitations sent to other people',
+  club_invitation: 'invitations to a club, sent to other people',
   coach_invitation: 'pending invitations, also other people’s data',
   event_template_folder: 'exported with each template, by name',
   mcp_grant:
