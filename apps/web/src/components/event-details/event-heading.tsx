@@ -1,15 +1,33 @@
+import { EventAPI } from '@/api/event/event.api';
 import { m } from '@/paraglide/messages';
 import { getConnectorProviderActivityLink } from '@/utils/connector-provider';
 import {
   connectorProviderLabelMap,
   eventTypeLabelMap,
 } from '@/utils/label-map/core';
-import { Trophy } from 'lucide-react';
+import { Download, Trophy } from 'lucide-react';
+import { toast } from 'sonner';
 
-import { EVENT_TYPE, Event } from '@openathlete/shared';
+import { ActivityEvent, EVENT_TYPE, Event } from '@openathlete/shared';
 
 import { SportIcon } from '../sport-icon/sport-icon';
 import { Badge } from '../ui/badge';
+import { originalFileName } from './original-file-name';
+
+/** Saves the activity's device file under its date and name */
+async function downloadOriginalFile(event: ActivityEvent) {
+  try {
+    const file = await EventAPI.getEventOriginalFile(event.eventId);
+    const url = URL.createObjectURL(file);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = originalFileName(event);
+    link.click();
+    URL.revokeObjectURL(url);
+  } catch {
+    toast.error(m.activity_original_file_failed());
+  }
+}
 
 /** The sport, name and badges of an event, as its dialog and page title */
 export function EventHeading({
@@ -69,6 +87,18 @@ export function EventHeading({
             })}
           </Badge>
         )}
+      {event.type === EVENT_TYPE.ACTIVITY && event.originalFile && (
+        <Badge asChild variant="outline" className="text-xs">
+          <button
+            type="button"
+            className="cursor-pointer hover:underline"
+            onClick={() => downloadOriginalFile(event)}
+          >
+            <Download className="h-3 w-3" />
+            {m.activity_original_file_download()}
+          </button>
+        </Badge>
+      )}
     </div>
   );
 }

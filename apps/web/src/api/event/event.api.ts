@@ -153,6 +153,14 @@ export class EventAPI {
     return res.data;
   }
 
+  /** The device file (FIT) the activity was imported from */
+  static async getEventOriginalFile(eventId: Event['eventId']): Promise<Blob> {
+    const res = await client.get(routes.event.getEventOriginalFile(eventId), {
+      responseType: 'blob',
+    });
+    return res.data;
+  }
+
   static async getEventWeather(
     eventId: Event['eventId'],
   ): Promise<GetEventWeatherResponseDto | null> {
