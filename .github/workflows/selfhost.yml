@@ -1,0 +1,192 @@
+# =============================================================================
+# Self-hosted images of this fork
+# =============================================================================
+# Every night (and on demand) this builds OpenAthlete as it runs on my own
+# instance: the upstream main branch with the branches listed in
+# selfhost/patches.txt merged on top, published as
+#
+#   ghcr.io/<owner>/openathlete-api:selfhost
+#   ghcr.io/<owner>/openathlete-web:selfhost
+#
+# plus a dated tag per build to roll back to. Nothing is pushed to the
+# repository: the patches stay their own branches (and pull requests).
+#
+# It only lives on this fork's default branch (selfhost), which is the only
+# branch scheduled workflows run from. A build is skipped when neither
+# upstream nor a patch changed since the last one.
+# =============================================================================
+name: Self-hosted images
+
+on:
+  schedule:
+    # 03:17 Berlin in winter (02:17 UTC): after upstream's evening merges
+    - cron: '17 2 * * *'
+  workflow_dispatch:
+    inputs:
+      force:
+        description: Build even if nothing changed
+        type: boolean
+        default: false
+  push:
+    branches: [selfhost]
+    paths: ['selfhost/patches.txt', '.github/workflows/selfhost.yml']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: selfhost-images
+  cancel-in-progress: false
+
+env:
+  UPSTREAM: openathleteorg/openathlete
+  UPSTREAM_REF: main
+
+jobs:
+  source:
+    name: Merge upstream and patches
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: read
+    outputs:
+      build: ${{ steps.check.outputs.build }}
+      key: ${{ steps.merge.outputs.key }}
+      upstream: ${{ steps.merge.outputs.upstream }}
+      date: ${{ steps.merge.outputs.date }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          path: fork
+          sparse-checkout: selfhost
+
+      - uses: actions/checkout@v7
+        with:
+          repository: ${{ env.UPSTREAM }}
+          ref: ${{ env.UPSTREAM_REF }}
+          path: src
+          fetch-depth: 0
+
+      - id: merge
+        name: Merge the patch branches
+        working-directory: src
+        run: |
+          git config user.name 'selfhost-bot'
+          git config user.email 'selfhost-bot@users.noreply.github.com'
+          upstream=$(git rev-parse HEAD)
+          printf 'upstream %s %s\n' "$UPSTREAM" "$upstream" > ../manifest.txt
+          # One branch of this fork per line; # starts a comment
+          grep -v '^[[:space:]]*\(#\|$\)' ../fork/selfhost/patches.txt | while read -r branch; do
+            git fetch --quiet "https://github.com/${{ github.repository }}" "$branch"
+            sha=$(git rev-parse FETCH_HEAD)
+            if ! git merge --no-edit --quiet FETCH_HEAD; then
+              echo "::error::$branch no longer merges into upstream $UPSTREAM_REF: rebase it, or take it out of selfhost/patches.txt"
+              exit 1
+            fi
+            printf 'patch %s %s\n' "$branch" "$sha" >> ../manifest.txt
+          done
+          cat ../manifest.txt
+          {
+            echo "key=$(sha256sum ../manifest.txt | cut -c1-16)"
+            echo "upstream=$(echo "$upstream" | cut -c1-7)"
+            echo "date=$(date -u +%Y%m%d)"
+          } >> "$GITHUB_OUTPUT"
+          git archive --format=tar HEAD > ../source.tar
+
+      - id: check
+        name: Skip if this source was already built
+        env:
+          KEY: ${{ steps.merge.outputs.key }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          owner=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')
+          echo "$GH_TOKEN" | docker login ghcr.io -u '${{ github.actor }}' --password-stdin > /dev/null
+          if [ '${{ inputs.force }}' != 'true' ] \
+            && docker manifest inspect "ghcr.io/$owner/openathlete-api:src-$KEY" > /dev/null 2>&1 \
+            && docker manifest inspect "ghcr.io/$owner/openathlete-web:src-$KEY" > /dev/null 2>&1; then
+            echo "Already built: src-$KEY"
+            echo 'build=false' >> "$GITHUB_OUTPUT"
+          else
+            echo 'build=true' >> "$GITHUB_OUTPUT"
+          fi
+
+      - if: steps.check.outputs.build == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: source
+          path: |
+            source.tar
+            manifest.txt
+          retention-days: 1
+
+  images:
+    name: Build ${{ matrix.image }} image
+    needs: source
+    if: needs.source.outputs.build == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: true
+      matrix:
+        image: [api, web]
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: source
+
+      - name: Unpack the merged source
+        run: mkdir src && tar -xf source.tar -C src
+
+      - id: names
+        run: |
+          owner=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')
+          echo "image=ghcr.io/$owner/openathlete-${{ matrix.image }}" >> "$GITHUB_OUTPUT"
+          # Which upstream commit and which patches this image holds, on one
+          # line: labels are one per line
+          echo "description=$(paste -sd ';' manifest.txt)" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v4
+
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # The Synology DS923+ is amd64: no arm64 build needed
+      - uses: docker/build-push-action@v7
+        with:
+          context: src
+          file: src/apps/${{ matrix.image }}/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ steps.names.outputs.image }}:selfhost
+            ${{ steps.names.outputs.image }}:selfhost-${{ needs.source.outputs.date }}-${{ needs.source.outputs.upstream }}
+            ${{ steps.names.outputs.image }}:src-${{ needs.source.outputs.key }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ needs.source.outputs.upstream }}
+            org.opencontainers.image.description=${{ steps.names.outputs.description }}
+          cache-from: type=gha,scope=selfhost-${{ matrix.image }}
+          cache-to: type=gha,mode=max,scope=selfhost-${{ matrix.image }}
+
+  summary:
+    name: Summary
+    needs: [source, images]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          {
+            echo '### Self-hosted images'
+            case '${{ needs.source.outputs.build }}/${{ needs.images.result }}' in
+              false/*) echo 'Nothing changed since the last build: skipped.' ;;
+              true/success) echo 'Published `selfhost` and `selfhost-${{ needs.source.outputs.date }}-${{ needs.source.outputs.upstream }}` (upstream `${{ needs.source.outputs.upstream }}`).' ;;
+              *) echo 'Failed: see the jobs above.' ;;
+            esac
+          } >> "$GITHUB_STEP_SUMMARY"
