@@ -161,6 +161,54 @@ describe('mapSuuntoSleep', () => {
     expect(metrics.some((m) => m.type === MetricType.HR_AVG_DAILY)).toBe(false);
   });
 
+  it('counts a night once when Suunto sends it several times', () => {
+    const night = {
+      timestamp: '2026-11-12T23:10:00.000+01:00',
+      entryData: {
+        SleepId: 42,
+        DeepSleepDuration: 2400,
+        LightSleepDuration: 17100,
+        REMSleepDuration: 7400,
+        Duration: 27500,
+        SleepQualityScore: 91,
+        IsNap: false,
+        BedtimeStart: '2026-11-12T23:10:00.000+01:00',
+        BedtimeEnd: '2026-11-13T06:48:00.000+01:00',
+      },
+    };
+    // The same sleep without an id is told by its bedtimes
+    const { SleepId: _id, ...withoutId } = night.entryData;
+    const nap = {
+      timestamp: '2026-11-13T13:00:00.000+01:00',
+      entryData: {
+        Duration: 1800,
+        IsNap: true,
+        BedtimeStart: '2026-11-13T13:00:00.000+01:00',
+        BedtimeEnd: '2026-11-13T13:30:00.000+01:00',
+      },
+    };
+
+    const metrics = mapSuuntoSleep([
+      ...Array.from({ length: 15 }, () => night),
+      nap,
+      nap,
+    ]);
+    const unnamed = mapSuuntoSleep([
+      { ...night, entryData: withoutId },
+      { ...night, entryData: withoutId },
+    ]);
+
+    expect(valuesOf(metrics, MetricType.SLEEP_DURATION)).toEqual({
+      '2026-11-13': 7.47,
+    });
+    expect(valuesOf(metrics, MetricType.NAP_DURATION)).toEqual({
+      '2026-11-13': 0.5,
+    });
+    expect(valuesOf(unnamed, MetricType.SLEEP_DURATION)).toEqual({
+      '2026-11-13': 7.47,
+    });
+  });
+
   it('adds up a night split into several segments', () => {
     const segment = (start: string, end: string, deep: number) => ({
       timestamp: start,

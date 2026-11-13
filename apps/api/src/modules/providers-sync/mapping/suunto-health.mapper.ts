@@ -208,6 +208,26 @@ export function mapSuuntoActivitySamples(
 }
 
 /**
+ * Suunto sends a sleep again each time the watch syncs it: the same night
+ * then comes many times in one answer, and adding them up gave nights of
+ * a hundred hours. One entry per sleep is kept, the last one sent.
+ */
+function uniqueSleeps(entries: SuuntoSleepEntry[]): SuuntoSleepEntry[] {
+  const sleeps = new Map<string, SuuntoSleepEntry>();
+  for (const entry of entries) {
+    const data = entry.entryData ?? {};
+    const key =
+      data.SleepId !== undefined
+        ? `id:${data.SleepId}`
+        : data.BedtimeStart || data.BedtimeEnd
+          ? `bed:${data.BedtimeStart ?? ''}|${data.BedtimeEnd ?? ''}`
+          : `at:${entry.timestamp}`;
+    sleeps.set(key, entry);
+  }
+  return [...sleeps.values()];
+}
+
+/**
  * Sleep, on the day the athlete wakes up, as Garmin dates it. A night can
  * be split into several segments, which add up; naps count apart, so they
  * never replace the night.
@@ -216,7 +236,7 @@ export function mapSuuntoSleep(
   entries: SuuntoSleepEntry[],
 ): SuuntoMetricRecord[] {
   const nights = groupByDay(
-    entries ?? [],
+    uniqueSleeps(entries ?? []),
     (entry) =>
       suuntoLocalDay(entry.entryData?.BedtimeEnd) ??
       suuntoLocalDay(entry.timestamp),
