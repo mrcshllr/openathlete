@@ -368,6 +368,8 @@
   "event_modified_successfully": "Termin geändert",
   "failed_to_modify_event": "Termin konnte nicht geändert werden",
   "imported_from": "Importiert von {provider}",
+  "activity_original_file_download": "FIT-Datei herunterladen",
+  "activity_original_file_failed": "Die Datei konnte nicht heruntergeladen werden",
   "edit": "Bearbeiten",
   "edit_template": "Vorlage bearbeiten",
   "save_as_template": "Als Vorlage speichern",

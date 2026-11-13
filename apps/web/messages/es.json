@@ -368,6 +368,8 @@
   "event_modified_successfully": "Sesión modificada",
   "failed_to_modify_event": "No se ha podido modificar la sesión",
   "imported_from": "Importado de {provider}",
+  "activity_original_file_download": "Descargar archivo FIT",
+  "activity_original_file_failed": "No se pudo descargar el archivo",
   "edit": "Editar",
   "edit_template": "Editar plantilla",
   "save_as_template": "Guardar como plantilla",
