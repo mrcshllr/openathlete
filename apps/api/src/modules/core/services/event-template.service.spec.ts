@@ -5,6 +5,8 @@ import { PrismaService } from 'src/modules/prisma/services/prisma.service';
 import { EventTemplateService } from './event-template.service';
 import { EventService } from './event.service';
 
+// The FIT SDK is ESM, which Jest cannot load
+jest.mock('@garmin/fitsdk', () => ({}));
 jest.mock('../helpers/workout-zones', () => ({
   // The zones are not what this test is about: keep the steps as they are
   remapZonesForAthlete: jest.fn(
@@ -137,6 +139,8 @@ describe('EventTemplateService', () => {
         findUnique: jest.fn().mockResolvedValue({
           eventTemplateId: 1,
           userId: 7,
+          // The user's own library, not a club's
+          clubId: null,
           event: {
             eventId: 11,
             name: '3min Pendelintervalle',
