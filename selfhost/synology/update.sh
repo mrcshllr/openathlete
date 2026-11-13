@@ -1,7 +1,7 @@
 #!/bin/sh
 # Holt die neueste Version aus meinem Fork und startet OpenAthlete neu:
 #   1. Backup der Datenbank (läuft sie noch nicht: Erststart, kein Backup)
-#   2. docker-compose.yml von upstream, mit meinen Images
+#   2. docker-compose.yml aus meinem Fork, mit meinen Images
 #   3. Images holen, Container neu starten, alte Images aufräumen
 # Im Aufgabenplaner als root, z. B. jede Nacht um 04:00 (nach dem Build).
 set -eu
@@ -22,8 +22,9 @@ if compose ps --status running --services 2>/dev/null | grep -qx postgres; then
   ./backup.sh || die "Backup fehlgeschlagen: kein Update"
 fi
 
-# 2. Compose-Datei von upstream, mit den Images aus meinem Fork
-curl -fsSL "https://raw.githubusercontent.com/openathleteorg/openathlete/main/docker-compose.yml" \
+# 2. Compose-Datei aus meinem Fork (Branch selfhost, aus dem auch die Images
+# gebaut sind), mit dessen Images statt denen des Hauptprojekts
+curl -fsSL "https://raw.githubusercontent.com/$owner/openathlete/selfhost/docker-compose.yml" \
   | sed "s#ghcr.io/openathleteorg/#ghcr.io/$owner/#g" > docker-compose.yml.new \
   || die "docker-compose.yml nicht ladbar"
 compose -f docker-compose.yml.new config -q || die "neue docker-compose.yml ist ungültig"

@@ -1,14 +1,14 @@
 # OpenAthlete auf meiner Synology
 
-Dieser Branch (`selfhost`, Standardbranch des Forks) baut OpenAthlete so, wie es
-auf meiner eigenen Instanz läuft: das offizielle `main` von
-[openathleteorg/openathlete](https://github.com/openathleteorg/openathlete) plus
-die Branches aus [`patches.txt`](patches.txt).
+Dieser Branch (`selfhost`, Standardbranch des Forks) ist die ganze Quelle
+meiner eigenen Instanz: das `main` von
+[openathleteorg/openathlete](https://github.com/openathleteorg/openathlete) mit
+meinen Änderungen obendrauf. Images und NAS hängen nur an diesem Fork.
 
 | Was | Wo |
 | --- | --- |
-| Bauplan, jede Nacht | [`.github/workflows/selfhost.yml`](../.github/workflows/selfhost.yml) |
-| Eigene Änderungen | [`patches.txt`](patches.txt), je eine Zeile pro Branch |
+| Bauplan: jede Nacht und bei jedem Push | [`.github/workflows/selfhost.yml`](../.github/workflows/selfhost.yml) |
+| Eigene Änderungen | Commits auf `selfhost` |
 | Images | `ghcr.io/mrcshllr/openathlete-api:selfhost`, `ghcr.io/mrcshllr/openathlete-web:selfhost` |
 | Dateien für das NAS | [`synology/`](synology) |
 
@@ -36,17 +36,40 @@ Cloudflare Tunnel unter `https://training.marcushaller.de`. Einstellungen in
 
 ## Eigene Änderungen
 
-Eine Änderung ist ein eigener Branch von `upstream/main` (und meist ein Pull
-Request ans Hauptprojekt). Sie kommt in `patches.txt`, der nächste Build nimmt
-sie mit. Lässt sie sich nicht mehr zusammenführen, schlägt der Build fehl und
-nichts ändert sich auf dem NAS: Branch auf das neue `main` rebasen.
+Eine Änderung kommt direkt auf `selfhost`, als Commit oder über einen Pull
+Request gegen `selfhost`. Jeder Push baut neue Images, das NAS holt sie beim
+nächsten Lauf seiner Aufgabe (05:00). Was auch dem Hauptprojekt nützt, geht
+zusätzlich als Pull Request dorthin, von einem eigenen Branch ab dessen `main`.
 
-Branches mit Datenbank-Migrationen erst eintragen, wenn das Hauptprojekt dem
-Ansatz zugestimmt hat. Löst es dasselbe später anders, passt meine Datenbank
-nicht mehr zu seinen Migrationen.
+Datenbank-Migrationen bekommen einen Zeitstempel nach der neuesten vorhandenen.
+Löst das Hauptprojekt dasselbe später anders, muss meine Migration von Hand an
+seine angepasst werden: das zeigt sich als Konflikt oder als fehlgeschlagener
+Start der API, das Backup der Nacht liegt in `backups/`.
+
+## Dem Hauptprojekt folgen
+
+Jede Nacht führt der Bauplan das `main` des Hauptprojekts in `selfhost`
+zusammen (ein Merge, meine Änderungen bleiben) und baut das Ergebnis. Was das
+Hauptprojekt inzwischen selbst übernommen hat, fällt dabei von allein weg.
+
+Gibt es einen Konflikt, schlägt der Lauf fehl und nichts ändert sich, weder
+am Branch noch auf dem NAS. Dann von Hand:
+
+```sh
+git checkout selfhost && git pull
+git fetch https://github.com/openathleteorg/openathlete main
+git merge FETCH_HEAD        # Konflikte lösen, committen
+git push
+```
+
+GitHub verbietet seinem eigenen Token einen Push, der Workflow-Dateien
+ändert, und das Hauptprojekt ändert seine gelegentlich. Damit der nächtliche
+Merge dann nicht scheitert: ein persönliches Token (classic, Rechte `repo` und
+`workflow`) als Repository-Secret `SYNC_TOKEN` hinterlegen. Ohne es bleibt in
+so einer Nacht alles beim Alten, bis der Merge von Hand gepusht ist.
 
 ## Lizenz
 
 OpenAthlete steht unter der AGPL-3.0. Der Quellcode jeder Version hier ist
-öffentlich: `main` von upstream plus die Branches aus `patches.txt`; jedes
-Image nennt beides in seinem Label `org.opencontainers.image.description`.
+öffentlich: der Branch `selfhost` dieses Forks; jedes Image nennt seinen Commit
+in den Labels `org.opencontainers.image.revision` und `...description`.

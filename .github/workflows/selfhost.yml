@@ -1,19 +1,21 @@
 # =============================================================================
 # Self-hosted images of this fork
 # =============================================================================
-# Every night (and on demand) this builds OpenAthlete as it runs on my own
-# instance: the upstream main branch with the branches listed in
-# selfhost/patches.txt merged on top, published as
+# The selfhost branch is the whole source of my own instance: upstream's main
+# with my changes on top. This workflow
 #
-#   ghcr.io/<owner>/openathlete-api:selfhost
-#   ghcr.io/<owner>/openathlete-web:selfhost
+#   1. every night, merges upstream's main into selfhost and pushes it, so
+#      the fork follows the main project while keeping what is only here;
+#   2. builds selfhost, after that merge and on every push to it, as
 #
-# plus a dated tag per build to roll back to. Nothing is pushed to the
-# repository: the patches stay their own branches (and pull requests).
+#        ghcr.io/<owner>/openathlete-api:selfhost
+#        ghcr.io/<owner>/openathlete-web:selfhost
 #
-# It only lives on this fork's default branch (selfhost), which is the only
-# branch scheduled workflows run from. A build is skipped when neither
-# upstream nor a patch changed since the last one.
+#      plus a dated tag per build to roll back to.
+#
+# A merge that conflicts fails the run and changes nothing: neither the
+# branch nor the images. It is then merged by hand (selfhost/README.md).
+# A commit that was already built is skipped.
 # =============================================================================
 name: Self-hosted images
 
@@ -24,12 +26,12 @@ on:
   workflow_dispatch:
     inputs:
       force:
-        description: Build even if nothing changed
+        description: Build even if this commit was already built
         type: boolean
         default: false
   push:
     branches: [selfhost]
-    paths: ['selfhost/patches.txt', '.github/workflows/selfhost.yml']
+    paths-ignore: ['**.md']
 
 permissions:
   contents: read
@@ -41,84 +43,75 @@ concurrency:
 env:
   UPSTREAM: openathleteorg/openathlete
   UPSTREAM_REF: main
+  BRANCH: selfhost
 
 jobs:
   source:
-    name: Merge upstream and patches
+    name: Follow upstream
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
-      contents: read
+      contents: write
       packages: read
     outputs:
       build: ${{ steps.check.outputs.build }}
-      key: ${{ steps.merge.outputs.key }}
-      upstream: ${{ steps.merge.outputs.upstream }}
+      sha: ${{ steps.merge.outputs.sha }}
+      short: ${{ steps.merge.outputs.short }}
       date: ${{ steps.merge.outputs.date }}
+      upstream: ${{ steps.merge.outputs.upstream }}
     steps:
       - uses: actions/checkout@v7
         with:
-          path: fork
-          sparse-checkout: selfhost
-
-      - uses: actions/checkout@v7
-        with:
-          repository: ${{ env.UPSTREAM }}
-          ref: ${{ env.UPSTREAM_REF }}
-          path: src
+          ref: ${{ env.BRANCH }}
           fetch-depth: 0
+          # GitHub refuses its own token a push that changes a workflow file,
+          # which upstream's commits sometimes do: SYNC_TOKEN is a personal
+          # token allowed to (selfhost/README.md)
+          token: ${{ secrets.SYNC_TOKEN || secrets.GITHUB_TOKEN }}
 
       - id: merge
-        name: Merge the patch branches
-        working-directory: src
+        name: Merge upstream into the branch
         run: |
           git config user.name 'selfhost-bot'
           git config user.email 'selfhost-bot@users.noreply.github.com'
-          upstream=$(git rev-parse HEAD)
-          printf 'upstream %s %s\n' "$UPSTREAM" "$upstream" > ../manifest.txt
-          # One branch of this fork per line; # starts a comment
-          grep -v '^[[:space:]]*\(#\|$\)' ../fork/selfhost/patches.txt | while read -r branch; do
-            git fetch --quiet "https://github.com/${{ github.repository }}" "$branch"
-            sha=$(git rev-parse FETCH_HEAD)
+          git fetch --quiet "https://github.com/$UPSTREAM" "$UPSTREAM_REF"
+          upstream=$(git rev-parse FETCH_HEAD)
+          # A push to the branch is built as it is: only the nightly run and
+          # a run started by hand bring upstream in
+          if [ '${{ github.event_name }}' != 'push' ] \
+            && ! git merge-base --is-ancestor "$upstream" HEAD; then
             if ! git merge --no-edit --quiet FETCH_HEAD; then
-              echo "::error::$branch no longer merges into upstream $UPSTREAM_REF: rebase it, or take it out of selfhost/patches.txt"
+              echo "::error::$UPSTREAM $UPSTREAM_REF no longer merges into $BRANCH: merge it by hand, see selfhost/README.md"
               exit 1
             fi
-            printf 'patch %s %s\n' "$branch" "$sha" >> ../manifest.txt
-          done
-          cat ../manifest.txt
+            if ! git push --quiet origin "HEAD:$BRANCH"; then
+              echo "::error::The merge could not be pushed. If upstream changed a workflow file, set the SYNC_TOKEN secret (selfhost/README.md)"
+              exit 1
+            fi
+          fi
           {
-            echo "key=$(sha256sum ../manifest.txt | cut -c1-16)"
-            echo "upstream=$(echo "$upstream" | cut -c1-7)"
+            echo "sha=$(git rev-parse HEAD)"
+            echo "short=$(git rev-parse --short=7 HEAD)"
+            echo "upstream=$(git merge-base HEAD "$upstream" | cut -c1-7)"
             echo "date=$(date -u +%Y%m%d)"
           } >> "$GITHUB_OUTPUT"
-          git archive --format=tar HEAD > ../source.tar
 
       - id: check
-        name: Skip if this source was already built
+        name: Skip if this commit was already built
         env:
-          KEY: ${{ steps.merge.outputs.key }}
+          SHA: ${{ steps.merge.outputs.sha }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           owner=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')
           echo "$GH_TOKEN" | docker login ghcr.io -u '${{ github.actor }}' --password-stdin > /dev/null
           if [ '${{ inputs.force }}' != 'true' ] \
-            && docker manifest inspect "ghcr.io/$owner/openathlete-api:src-$KEY" > /dev/null 2>&1 \
-            && docker manifest inspect "ghcr.io/$owner/openathlete-web:src-$KEY" > /dev/null 2>&1; then
-            echo "Already built: src-$KEY"
+            && docker manifest inspect "ghcr.io/$owner/openathlete-api:src-$SHA" > /dev/null 2>&1 \
+            && docker manifest inspect "ghcr.io/$owner/openathlete-web:src-$SHA" > /dev/null 2>&1; then
+            echo "Already built: src-$SHA"
             echo 'build=false' >> "$GITHUB_OUTPUT"
           else
             echo 'build=true' >> "$GITHUB_OUTPUT"
           fi
-
-      - if: steps.check.outputs.build == 'true'
-        uses: actions/upload-artifact@v7
-        with:
-          name: source
-          path: |
-            source.tar
-            manifest.txt
-          retention-days: 1
 
   images:
     name: Build ${{ matrix.image }} image
@@ -134,20 +127,14 @@ jobs:
       matrix:
         image: [api, web]
     steps:
-      - uses: actions/download-artifact@v8
+      - uses: actions/checkout@v7
         with:
-          name: source
-
-      - name: Unpack the merged source
-        run: mkdir src && tar -xf source.tar -C src
+          ref: ${{ needs.source.outputs.sha }}
 
       - id: names
         run: |
           owner=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')
           echo "image=ghcr.io/$owner/openathlete-${{ matrix.image }}" >> "$GITHUB_OUTPUT"
-          # Which upstream commit and which patches this image holds, on one
-          # line: labels are one per line
-          echo "description=$(paste -sd ';' manifest.txt)" >> "$GITHUB_OUTPUT"
 
       - uses: docker/setup-buildx-action@v4
 
@@ -160,18 +147,18 @@ jobs:
       # The Synology DS923+ is amd64: no arm64 build needed
       - uses: docker/build-push-action@v7
         with:
-          context: src
-          file: src/apps/${{ matrix.image }}/Dockerfile
+          context: .
+          file: apps/${{ matrix.image }}/Dockerfile
           platforms: linux/amd64
           push: true
           tags: |
             ${{ steps.names.outputs.image }}:selfhost
-            ${{ steps.names.outputs.image }}:selfhost-${{ needs.source.outputs.date }}-${{ needs.source.outputs.upstream }}
-            ${{ steps.names.outputs.image }}:src-${{ needs.source.outputs.key }}
+            ${{ steps.names.outputs.image }}:selfhost-${{ needs.source.outputs.date }}-${{ needs.source.outputs.short }}
+            ${{ steps.names.outputs.image }}:src-${{ needs.source.outputs.sha }}
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
-            org.opencontainers.image.revision=${{ needs.source.outputs.upstream }}
-            org.opencontainers.image.description=${{ steps.names.outputs.description }}
+            org.opencontainers.image.revision=${{ needs.source.outputs.sha }}
+            org.opencontainers.image.description=${{ github.repository }} ${{ env.BRANCH }} ${{ needs.source.outputs.short }}, with ${{ env.UPSTREAM }} ${{ env.UPSTREAM_REF }} up to ${{ needs.source.outputs.upstream }}
           cache-from: type=gha,scope=selfhost-${{ matrix.image }}
           cache-to: type=gha,mode=max,scope=selfhost-${{ matrix.image }}
 
@@ -184,9 +171,9 @@ jobs:
       - run: |
           {
             echo '### Self-hosted images'
-            case '${{ needs.source.outputs.build }}/${{ needs.images.result }}' in
-              false/*) echo 'Nothing changed since the last build: skipped.' ;;
-              true/success) echo 'Published `selfhost` and `selfhost-${{ needs.source.outputs.date }}-${{ needs.source.outputs.upstream }}` (upstream `${{ needs.source.outputs.upstream }}`).' ;;
-              *) echo 'Failed: see the jobs above.' ;;
+            case '${{ needs.source.result }}/${{ needs.source.outputs.build }}/${{ needs.images.result }}' in
+              success/false/*) echo 'Commit `${{ needs.source.outputs.short }}` was already built: skipped.' ;;
+              success/true/success) echo 'Published `selfhost` and `selfhost-${{ needs.source.outputs.date }}-${{ needs.source.outputs.short }}` (upstream up to `${{ needs.source.outputs.upstream }}`).' ;;
+              *) echo 'Failed: see the jobs above. Nothing changed on the NAS.' ;;
             esac
           } >> "$GITHUB_STEP_SUMMARY"
