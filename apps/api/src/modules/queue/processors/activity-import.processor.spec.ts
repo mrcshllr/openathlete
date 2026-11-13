@@ -1,8 +1,9 @@
-import { Job } from 'bullmq';
+import { DelayedError, Job } from 'bullmq';
 
 import { ConnectorProvider } from '@openathlete/database';
 
 import { CoachActivityNoticeEvent } from '../../../events/coach-activity-notice.event';
+import { ProviderRateLimitError } from '../../providers-sync/errors/provider-rate-limit.error';
 import { ActivityImportJobData } from '../queue.service';
 import { ActivityImportProcessor } from './activity-import.processor';
 
@@ -186,5 +187,23 @@ describe('ActivityImportProcessor', () => {
     await processor.process(job());
     expect(duplicates.findDuplicate).not.toHaveBeenCalled();
     expect(strava.importActivity).toHaveBeenCalled();
+  });
+
+  it('puts an activity back for later when the provider is out of quota', async () => {
+    const { processor, strava, queue } = setup(true);
+    strava.importActivity.mockRejectedValue(
+      new ProviderRateLimitError('Strava', 120_000),
+    );
+    const waiting = Object.assign(job(), { moveToDelayed: jest.fn() });
+    const before = Date.now();
+
+    await expect(processor.process(waiting, 'token')).rejects.toBeInstanceOf(
+      DelayedError,
+    );
+
+    const [until, token] = waiting.moveToDelayed.mock.calls[0];
+    expect(until).toBeGreaterThanOrEqual(before + 120_000);
+    expect(token).toBe('token');
+    expect(queue.addActivityProcessingJob).not.toHaveBeenCalled();
   });
 });

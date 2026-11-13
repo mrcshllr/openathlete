@@ -24,6 +24,7 @@ import { ActivityStream, ApiEnvSchemaType } from '@openathlete/shared';
 import { streamUpdate } from 'src/modules/core/helpers/activity-corrections';
 
 import { ActivityFileParserService } from '../../core/helpers/activity-file-parser.service';
+import { saveActivityOriginalFile } from '../../core/helpers/activity-original-file';
 import { FitFileSegment } from '../../core/helpers/activity-parser.interface';
 import {
   calculateSegmentMetrics,
@@ -54,6 +55,7 @@ import { PrismaService } from '../../prisma/services/prisma.service';
 import { QueueService } from '../../queue/queue.service';
 import {
   BaseProviderService,
+  FullImportOptions,
   FullImportResult,
   OAuthConfig,
   OAuthTokenResponse,
@@ -66,6 +68,7 @@ import {
 } from '../base/provider-import.interface';
 import { providerRedirectUri } from '../base/provider-urls';
 import { InvalidRefreshTokenError } from '../errors/invalid-refresh-token.error';
+import { ProviderRateLimitError } from '../errors/provider-rate-limit.error';
 import {
   SuuntoMetricRecord,
   mapSuuntoActivitySamples,
@@ -75,6 +78,17 @@ import {
 } from '../mapping/suunto-health.mapper';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * How long Suunto asks to wait, from its Retry-After header in seconds.
+ * Without one, an hour: its quotas count by the minute and by the week.
+ */
+function retryAfterMs(header: unknown): number {
+  const seconds = Number(header);
+  return Number.isFinite(seconds) && seconds > 0
+    ? seconds * 1000
+    : 60 * 60 * 1000;
+}
 
 @Injectable()
 export class SuuntoProviderService
@@ -579,17 +593,20 @@ export class SuuntoProviderService
    */
   async importActivities(
     account: ProviderAccount,
-    options?: ImportOptions,
+    options?: ImportOptions & { wholeHistory?: boolean },
   ): Promise<ImportedActivity[]> {
     const limit = options?.limit ?? Number.POSITIVE_INFINITY;
     const activities: ImportedActivity[] = [];
 
     const endTime = options?.endDate ? options.endDate.getTime() : Date.now();
+    // The whole history is asked without a lower bound
     const startTime = options?.startDate
       ? options.startDate.getTime()
-      : endTime - this.importWindowMs;
+      : options?.wholeHistory
+        ? undefined
+        : endTime - this.importWindowMs;
 
-    if (startTime >= endTime) {
+    if (startTime !== undefined && startTime >= endTime) {
       return [];
     }
 
@@ -611,7 +628,7 @@ export class SuuntoProviderService
                 {
                   headers: this.getWorkoutApiHeaders(accessToken),
                   params: {
-                    since: startTime,
+                    ...(startTime !== undefined ? { since: startTime } : {}),
                     until: endTime,
                     limit: pageSize,
                     offset,
@@ -625,6 +642,14 @@ export class SuuntoProviderService
               );
               return data;
             } catch (error) {
+              // Out of quota (the developer product allows 200 calls a
+              // week): the import waits instead of ending with a part
+              if (isAxiosError(error) && error.response?.status === 429) {
+                throw new ProviderRateLimitError(
+                  'Suunto',
+                  retryAfterMs(error.response.headers?.['retry-after']),
+                );
+              }
               // 403 (a revoked access, a wrong subscription key) is an
               // error to see, not an empty history
               if (isAxiosError(error) && error.response?.status === 400) {
@@ -703,6 +728,14 @@ export class SuuntoProviderService
         workout.workoutKey,
       );
     } catch (error) {
+      // Out of quota: the job runs again later and finds the activity saved
+      // without its streams, which is what makes it fetch the file again
+      if (isAxiosError(error) && error.response?.status === 429) {
+        throw new ProviderRateLimitError(
+          'Suunto',
+          retryAfterMs(error.response.headers?.['retry-after']),
+        );
+      }
       // The summary is saved: the activity shows without its streams
       this.logger.warn(
         `Failed to import the FIT file of Suunto workout ${workout.workoutKey}: ${error instanceof Error ? error.message : String(error)}`,
@@ -813,6 +846,13 @@ export class SuuntoProviderService
             },
           );
         },
+      );
+
+      // Kept as received, so the athlete can download it again
+      await saveActivityOriginalFile(
+        this.prisma,
+        activity.eventActivityId,
+        Buffer.from(response.data),
       );
 
       const parseResult = await this.activityFileParserService.parseByFileType(
@@ -950,11 +990,16 @@ export class SuuntoProviderService
   }
 
   /**
-   * Queue full import of activities
+   * Queue the import of the whole history, or of the activities since a
+   * date. Suunto lists workouts by pages without a limit in time.
    */
-  async queueFullImport(account: ProviderAccount): Promise<FullImportResult> {
+  async queueFullImport(
+    account: ProviderAccount,
+    { since }: FullImportOptions = {},
+  ): Promise<FullImportResult> {
     const endDate = new Date();
-    const startDate = new Date(endDate.getTime() - this.importWindowMs);
+    // Only said when true: a whole-history result stays as it was
+    const partial = since ? { partial: true } : {};
 
     if (account.importMetricsEnabled) {
       // The 24/7 history Suunto serves, from the day after the first, which
@@ -967,13 +1012,13 @@ export class SuuntoProviderService
     }
 
     try {
-      const activities = await this.importActivities(account, {
-        startDate,
-        endDate,
-      });
+      const activities = await this.importActivities(
+        account,
+        since ? { startDate: since, endDate } : { endDate, wholeHistory: true },
+      );
 
       if (activities.length === 0) {
-        return { queuedActivities: 0 };
+        return { queuedActivities: 0, ...partial };
       }
 
       const queued = await this.enqueueActivities(account, activities);
@@ -981,8 +1026,11 @@ export class SuuntoProviderService
       return {
         queuedActivities: queued,
         backfillRequested: false,
+        ...partial,
       };
     } catch (error) {
+      // The processor pauses the queue and lists the history again later
+      if (error instanceof ProviderRateLimitError) throw error;
       const errorName =
         error instanceof Error ? error.constructor.name : 'Unknown';
       const errorMessage =

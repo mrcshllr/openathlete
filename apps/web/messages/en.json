@@ -368,6 +368,8 @@
   "event_modified_successfully": "Event modified successfully",
   "failed_to_modify_event": "Failed to modify event",
   "imported_from": "Imported from {provider}",
+  "activity_original_file_download": "Download FIT file",
+  "activity_original_file_failed": "The file could not be downloaded",
   "edit": "Edit",
   "edit_template": "Edit template",
   "save_as_template": "Save as template",

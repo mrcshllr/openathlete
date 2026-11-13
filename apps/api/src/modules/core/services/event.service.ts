@@ -58,6 +58,7 @@ import { QueueService } from 'src/modules/queue/queue.service';
 import { CoachActivityNoticeEvent } from '../../../events/coach-activity-notice.event';
 import { ProviderExportService } from '../../providers-sync/export.service';
 import { TrainingLoadEstimationService } from '../../queue/services/training-load-estimation.service';
+import { originalFileName } from '../helpers/activity-original-file';
 import {
   reductActivityStreamToResolution,
   uncompressActivityStream,
@@ -374,9 +375,49 @@ export class EventService {
     const plannedSession = event.activity
       ? await this.getPlannedSessionOf(event.activity.eventActivityId)
       : null;
+    // Its size only: the bytes are read when the file is downloaded
+    const originalFile = event.activity
+      ? await this.prisma.eventActivityFile.findUnique({
+          where: { eventActivityId: event.activity.eventActivityId },
+          select: { fileType: true, size: true },
+        })
+      : null;
     return {
       ...this.prismaEventToEvent(event),
       ...(plannedSession ? { plannedSession } : {}),
+      ...(originalFile ? { originalFile } : {}),
+    };
+  }
+
+  /**
+   * The device file an activity was imported from, for whoever may read the
+   * activity: the athlete, and their coach.
+   */
+  async getEventOriginalFile(user: AuthUser, eventId: Event['eventId']) {
+    const ability = await this.abilities.getFor({ user });
+
+    const event = await this.prisma.event.findFirst({
+      where: {
+        AND: [{ eventId: eventId }, accessibleBy(ability, 'read').Event],
+      },
+      select: {
+        name: true,
+        startDate: true,
+        activity: { select: { file: true } },
+      },
+    });
+
+    if (!event) {
+      throw new NotFoundException('Event not found');
+    }
+    const file = event.activity?.file;
+    if (!file) {
+      throw new NotFoundException('No original file for this activity');
+    }
+
+    return {
+      content: Buffer.from(file.content),
+      fileName: originalFileName(event, file.fileType),
     };
   }
 

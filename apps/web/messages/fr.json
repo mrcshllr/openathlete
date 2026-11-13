@@ -366,6 +366,8 @@
   "event_modified_successfully": "Événement modifié avec succès",
   "failed_to_modify_event": "Échec de la modification de l'événement",
   "imported_from": "Importé depuis {provider}",
+  "activity_original_file_download": "Télécharger le fichier FIT",
+  "activity_original_file_failed": "Le fichier n'a pas pu être téléchargé",
   "edit": "Modifier",
   "edit_template": "Modifier un modèle",
   "save_as_template": "Enregistrer comme modèle",
