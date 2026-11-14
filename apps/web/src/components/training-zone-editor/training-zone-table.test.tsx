@@ -71,6 +71,17 @@ describe('TrainingZoneTable', () => {
     expect(rows()[1][3]).toBe('199+');
   });
 
+  it('shows paces as minutes and seconds per km', async () => {
+    const items = zones(TRAINING_ZONE_TYPE.PACE, ['RUNNING']);
+    items[0].values[0] = { min: 5.5, max: 10, sports: ['RUNNING'] };
+    items[1].values[0] = { min: 2, max: 4.3166, sports: ['RUNNING'] };
+    await render(items);
+    expect(rows().map((cells) => cells.slice(2, 4))).toEqual([
+      ['5:30', '10:00'],
+      ['2:00', '4:19+'],
+    ]);
+  });
+
   it('does not reorder the sports of the zones it shows', async () => {
     const items = zones(TRAINING_ZONE_TYPE.HEARTRATE, ['RUNNING', 'CYCLING']);
     await render(items);

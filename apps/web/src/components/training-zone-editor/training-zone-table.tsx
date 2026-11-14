@@ -18,6 +18,7 @@ import {
 } from '@openathlete/shared';
 
 import { describeSports } from './sport-summary';
+import { formatPace } from './zone-profiles';
 
 interface TrainingZoneTableProps {
   zones: (TrainingZone & { values: TrainingZoneValue[] })[];
@@ -87,6 +88,11 @@ export function TrainingZoneTable({ zones }: TrainingZoneTableProps) {
                       const isLastZone =
                         config.zones.length === zones.length &&
                         idx === config.zones.length - 1;
+                      // Paces are stored in minutes per km: 5.5 reads 5:30
+                      const limit = (value: number) =>
+                        item.zone.type === TRAINING_ZONE_TYPE.PACE
+                          ? formatPace(value)
+                          : value;
                       return (
                         <TableRow key={idx}>
                           <TableCell>{item.zone.name}</TableCell>
@@ -94,10 +100,10 @@ export function TrainingZoneTable({ zones }: TrainingZoneTableProps) {
                             {item.zone.description}
                           </TableCell>
                           <TableCell className="text-right font-mono">
-                            {item.value.min}
+                            {limit(item.value.min)}
                           </TableCell>
                           <TableCell className="text-right font-mono">
-                            {item.value.max}
+                            {limit(item.value.max)}
                             {isLastZone &&
                               item.zone.type !==
                                 TRAINING_ZONE_TYPE.HEARTRATE && (
