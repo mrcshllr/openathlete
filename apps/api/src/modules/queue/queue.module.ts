@@ -19,6 +19,7 @@ import { ProviderFullImportProcessor } from './processors/provider-full-import.p
 import { StravaDescriptionProcessor } from './processors/strava-description.processor';
 import { SuuntoNotificationProcessor } from './processors/suunto-notification.processor';
 import { TrainingLoadEstimationProcessor } from './processors/training-load-estimation.processor';
+import { TrainingLoadRecalcProcessor } from './processors/training-load-recalc.processor';
 import { TrainingPlanApplyProcessor } from './processors/training-plan-apply.processor';
 import { QueueService } from './queue.service';
 import { GapBackfillService } from './services/gap-backfill.service';
@@ -406,6 +407,15 @@ function parseRedisUrl(redisUrl: string): {
       },
     }),
     BullModule.registerQueue({
+      name: 'training-load-recalc',
+      defaultJobOptions: {
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 5000 },
+        removeOnComplete: { age: 24 * 3600, count: 1000 },
+        removeOnFail: { age: 7 * 24 * 3600 },
+      },
+    }),
+    BullModule.registerQueue({
       name: 'training-plan-apply',
       defaultJobOptions: {
         attempts: 3,
@@ -437,6 +447,7 @@ function parseRedisUrl(redisUrl: string): {
           ActivityProcessingProcessor,
           DuplicateActivitiesProcessor,
           TrainingPlanApplyProcessor,
+          TrainingLoadRecalcProcessor,
           RecordsBackfillService,
           GapBackfillService,
           IntensityBackfillService,
