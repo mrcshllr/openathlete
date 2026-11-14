@@ -209,11 +209,27 @@ function computeElevationGainRecords(
 }
 
 /**
+ * The distance the device recorded along the activity, when it can be read
+ * against time: one value per sample, never going back.
+ */
+function recordedDistances(
+  time: number[],
+  distance: number[] | undefined,
+): number[] | null {
+  if (!distance || distance.length !== time.length) return null;
+  for (let i = 0; i < distance.length; i++) {
+    if (!Number.isFinite(distance[i])) return null;
+    if (i > 0 && distance[i] < distance[i - 1]) return null;
+  }
+  return distance[distance.length - 1] > distance[0] ? distance : null;
+}
+
+/**
  * Records of an activity: pace and climbing by distance (they need the GPS
  * route), power and heart rate by duration (indoor sessions have them too).
  */
 export const computeRecords = (stream: ActivityStream): ComputedRecord[] => {
-  const { time, latlng, altitude, heartrate, watts } = stream;
+  const { time, latlng, altitude, heartrate, watts, distance } = stream;
   if (!time || time.length === 0) return [];
 
   const records = [
@@ -231,7 +247,12 @@ export const computeRecords = (stream: ActivityStream): ComputedRecord[] => {
   ) {
     return records;
   }
-  const cumulativeDistances = calculateCumulativeDistances(latlng);
+  // The device's own distance when it recorded one: it is the distance the
+  // activity shows, and it does not lose ground at each sample without a
+  // position, which watches write among the others (a tenth of a run, and
+  // every pace a fifth too slow, on a Suunto recording)
+  const cumulativeDistances =
+    recordedDistances(time, distance) ?? calculateCumulativeDistances(latlng);
   return [
     ...computeSpeedRecords(time, cumulativeDistances),
     ...(altitude?.length

@@ -1,3 +1,5 @@
+import { ActivityStream } from '@openathlete/shared';
+
 import { computeRecords } from './record';
 
 // Metres per degree of latitude on the sphere used by the haversine formula
@@ -22,7 +24,7 @@ type Step = [seconds: number, metres: number];
 const repeat = (count: number, step: Step): Step[] =>
   Array.from({ length: count }, () => step);
 
-function speedRecords(stream: ReturnType<typeof route>) {
+function speedRecords(stream: ActivityStream) {
   return new Map(
     computeRecords(stream)
       .filter((record) => record.type === 'SPEED')
@@ -75,6 +77,40 @@ describe('speed records', () => {
     );
     expect(records.get(800)).toBeCloseTo(280, 3);
     expect(records.get(1000)).toBeCloseTo(320, 3);
+  });
+});
+
+describe('recorded distance', () => {
+  // 4 m/s for 3000 s, every eighth sample without a position, as a Suunto
+  // file has them: the route alone loses two steps at each of them
+  const steady = route(repeat(3000, [1, 4]));
+  const latlng = steady.latlng.map((point, i) => (i % 8 === 4 ? [] : point));
+  const distance = steady.time.map((seconds) => seconds * 4);
+
+  test('measures pace on the distance the device recorded', () => {
+    const records = speedRecords({ ...steady, latlng, distance });
+    expect(records.get(1000)).toBeCloseTo(250, 3);
+    expect(records.get(10000)).toBeCloseTo(2500, 3);
+  });
+
+  test('falls back to the route without a usable recorded distance', () => {
+    const fromRoute = speedRecords({ ...steady, latlng });
+    expect(fromRoute.get(1000)).toBeGreaterThan(300);
+    expect(fromRoute.has(10000)).toBe(false);
+    for (const unusable of [
+      distance.slice(1), // not one value per sample
+      distance.map((metres, i) => (i === 10 ? 0 : metres)), // goes back
+      distance.map(() => 0), // never moves
+    ]) {
+      expect(speedRecords({ ...steady, latlng, distance: unusable })).toEqual(
+        fromRoute,
+      );
+    }
+  });
+
+  test('still needs a route', () => {
+    const { time } = steady;
+    expect(computeRecords({ time, distance })).toEqual([]);
   });
 });
 
