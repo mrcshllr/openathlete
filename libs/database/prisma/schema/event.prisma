@@ -37,6 +37,10 @@ model Event {
   /// When the athlete or coach changed a session that came from a training
   /// plan: moving or updating the plan leaves it as they made it
   planModifiedAt DateTime? @map("plan_modified_at")
+  /// The club session this occurrence comes from; the club creates and
+  /// removes these events
+  clubSession   ClubSession? @relation(fields: [clubSessionId], references: [clubSessionId], onDelete: SetNull)
+  clubSessionId Int?         @map("club_session_id")
 
   // relationships
   activityChatNotices ActivityChatNotice[]
@@ -63,6 +67,7 @@ model Event {
   @@index([athleteId, startDate])
   @@index([seriesId])
   @@index([batchId])
+  @@index([clubSessionId])
   @@map("event")
 }
 
@@ -388,6 +393,7 @@ model EventTemplate {
   /// gone gives each template back to its author.
   club     Club?                @relation(fields: [clubId], references: [clubId], onDelete: SetNull)
   clubId   Int?                 @map("club_id")
+  clubSessions ClubSession[]
 
   // timestamps
   createdAt DateTime @default(now()) @map("created_at")

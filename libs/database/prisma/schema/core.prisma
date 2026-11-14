@@ -117,6 +117,8 @@ model User {
   metricThresholds          CoachMetricThreshold[]
   clubInvitationsSent       ClubInvitation[]
   trainingPlanTemplates     TrainingPlanTemplate[]
+  clubSessionsCreated       ClubSession[]
+  clubSessionAttendance     ClubSessionAttendance[]
 
   // timestamps
   createdAt DateTime @default(now()) @map("created_at")
