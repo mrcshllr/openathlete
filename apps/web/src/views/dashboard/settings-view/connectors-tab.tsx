@@ -1,5 +1,6 @@
 import { useInstanceInfoQuery } from '@/api/instance';
 import {
+  type ImportAllActivitiesVariables,
   useDisconnectProviderMutation,
   useGetConnectedProvidersQuery,
   useGetOAuthUriMutation,
@@ -62,6 +63,9 @@ const SUPPORTED_PROVIDERS: ConnectorProvider[] = [
   'POLAR',
   'COROS',
 ];
+
+const importedProvider = (variables: ImportAllActivitiesVariables) =>
+  typeof variables === 'string' ? variables : variables.provider;
 
 export function ConnectorsTab() {
   const posthog = usePostHog();
@@ -154,10 +158,11 @@ export function ConnectorsTab() {
   });
 
   const importAllActivitiesMutation = useImportAllActivitiesMutation({
-    onMutate: (provider) => {
-      setImportingProvider(provider);
+    onMutate: (variables) => {
+      setImportingProvider(importedProvider(variables));
     },
-    onSuccess: (_, provider) => {
+    onSuccess: (_, variables) => {
+      const provider = importedProvider(variables);
       posthog?.capture('provider_full_import_requested', { provider });
       toast.success(
         m.full_import_started({
@@ -165,11 +170,11 @@ export function ConnectorsTab() {
         }),
       );
     },
-    onError: (error, provider) => {
+    onError: (error, variables) => {
       toast.error(
         error.message ||
           m.full_import_failed({
-            provider: connectorProviderLabelMap[provider],
+            provider: connectorProviderLabelMap[importedProvider(variables)],
           }),
       );
     },
@@ -413,24 +418,30 @@ export function ConnectorsTab() {
                         </>
                       }
                     >
-                      {!fullImportCompleted && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          disabled={
-                            fullImportInProgress ||
-                            isImportingThisProvider ||
-                            !providerDetails.importActivitiesEnabled
-                          }
-                          onClick={() =>
-                            importAllActivitiesMutation.mutate(provider)
-                          }
-                        >
-                          {fullImportInProgress || isImportingThisProvider
-                            ? m.full_import_in_progress()
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        data-full-import={provider}
+                        disabled={
+                          fullImportInProgress ||
+                          isImportingThisProvider ||
+                          !providerDetails.importActivitiesEnabled
+                        }
+                        onClick={() =>
+                          importAllActivitiesMutation.mutate(
+                            // A completed import runs again only when asked
+                            fullImportCompleted
+                              ? { provider, again: true }
+                              : provider,
+                          )
+                        }
+                      >
+                        {fullImportInProgress || isImportingThisProvider
+                          ? m.full_import_in_progress()
+                          : fullImportCompleted
+                            ? m.full_import_again()
                             : m.full_import_cta()}
-                        </Button>
-                      )}
+                      </Button>
                     </SettingsRow>
                   )}
                   <SettingsRow

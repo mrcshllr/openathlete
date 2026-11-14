@@ -118,18 +118,26 @@ export const useUpdateProviderPreferencesMutation = (
   });
 };
 
+/** A provider, or a provider whose completed import is to run again */
+export type ImportAllActivitiesVariables =
+  ConnectorProvider | { provider: ConnectorProvider; again: true };
+
 export const useImportAllActivitiesMutation = (
   opt?: MutationOptions<
     Awaited<ReturnType<typeof ProviderAPI.importAllActivities>>,
     Error,
-    ConnectorProvider
+    ImportAllActivitiesVariables
   >,
 ) => {
   const queryClient = useQueryClient();
   return useMutation({
     ...opt,
-    mutationFn: (provider: ConnectorProvider) =>
-      ProviderAPI.importAllActivities(provider),
+    mutationFn: (variables: ImportAllActivitiesVariables) =>
+      typeof variables === 'string'
+        ? ProviderAPI.importAllActivities(variables)
+        : ProviderAPI.importAllActivities(variables.provider, {
+            again: variables.again,
+          }),
     onSuccess: (data, variables, onMutateResult, context) => {
       if (opt?.onSuccess) {
         opt.onSuccess(data, variables, onMutateResult, context);

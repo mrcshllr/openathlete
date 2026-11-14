@@ -24,7 +24,14 @@ export type ProviderPreferencesDto = z.infer<typeof providerPreferencesSchema>;
  * Without it, the import goes as far back as the provider allows.
  */
 export const importAllActivitiesDtoSchema = z
-  .object({ months: z.number().int().min(1).max(24).optional() })
+  .object({
+    months: z.number().int().min(1).max(24).optional(),
+    /**
+     * Run the import although one already completed: activities saved since
+     * are skipped, the missing ones are fetched, and titles are refreshed
+     */
+    again: z.boolean().optional(),
+  })
   .optional();
 export type ImportAllActivitiesDto = z.infer<
   typeof importAllActivitiesDtoSchema

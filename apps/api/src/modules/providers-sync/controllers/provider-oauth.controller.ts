@@ -822,6 +822,11 @@ export class ProviderOAuthController {
           description:
             'Only the last months (Strava, Suunto, COROS). The settings can then still ask for the whole history.',
         },
+        again: {
+          type: 'boolean',
+          description:
+            'Run the import although one already completed. Activities already saved are not imported twice.',
+        },
       },
     },
   })
@@ -852,7 +857,7 @@ export class ProviderOAuthController {
       );
     }
 
-    if (account.fullImportCompletedAt) {
+    if (account.fullImportCompletedAt && !body?.again) {
       return { success: true, message: 'Full import already completed' };
     }
 
