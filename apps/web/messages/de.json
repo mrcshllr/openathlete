@@ -370,6 +370,7 @@
   "imported_from": "Importiert von {provider}",
   "activity_original_file_download": "FIT-Datei herunterladen",
   "activity_gpx_download": "GPX-Track herunterladen",
+  "activity_gpx_download_failed": "Der Track konnte nicht heruntergeladen werden",
   "activity_original_file_failed": "Die Datei konnte nicht heruntergeladen werden",
   "edit": "Bearbeiten",
   "edit_template": "Vorlage bearbeiten",

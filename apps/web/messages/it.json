@@ -370,6 +370,7 @@
   "imported_from": "Importato da {provider}",
   "activity_original_file_download": "Scarica il file FIT",
   "activity_gpx_download": "Scarica la traccia GPX",
+  "activity_gpx_download_failed": "Non è stato possibile scaricare la traccia",
   "activity_original_file_failed": "Impossibile scaricare il file",
   "edit": "Modifica",
   "edit_template": "Modifica modello",

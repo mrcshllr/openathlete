@@ -58,7 +58,7 @@ import { QueueService } from 'src/modules/queue/queue.service';
 import { CoachActivityNoticeEvent } from '../../../events/coach-activity-notice.event';
 import { ProviderExportService } from '../../providers-sync/export.service';
 import { TrainingLoadEstimationService } from '../../queue/services/training-load-estimation.service';
-import { activityToGpx } from '../helpers/activity-gpx';
+import { activityToGpx, garminSourceLabel } from '../helpers/activity-gpx';
 import { originalFileName } from '../helpers/activity-original-file';
 import {
   reductActivityStreamToResolution,
@@ -386,20 +386,10 @@ export class EventService {
           select: { fileType: true, size: true },
         })
       : null;
-    // A stream keeps latlng only when it has a valid point
-    const hasTrack = event.activity
-      ? (
-          await this.prisma.$queryRaw<{ has_track: boolean }[]>`
-            SELECT (stream -> 'latlng') IS NOT NULL AS has_track
-            FROM event_activity
-            WHERE event_activity_id = ${event.activity.eventActivityId}`
-        )[0]?.has_track === true
-      : false;
     return {
       ...this.prismaEventToEvent(event),
       ...(plannedSession ? { plannedSession } : {}),
       ...(originalFile ? { originalFile } : {}),
-      ...(hasTrack ? { hasTrack } : {}),
     };
   }
 
@@ -448,7 +438,7 @@ export class EventService {
       select: {
         name: true,
         startDate: true,
-        activity: { select: { sport: true, stream: true } },
+        activity: { select: { sport: true, stream: true, provider: true } },
       },
     });
     if (!event) {
@@ -459,7 +449,15 @@ export class EventService {
     const gpx =
       event.activity && compressed
         ? activityToGpx(
-            { ...event, sport: event.activity.sport },
+            {
+              ...event,
+              sport: event.activity.sport,
+              // Garmin's brand guidelines: its data names it as its source
+              source:
+                event.activity.provider === 'GARMIN'
+                  ? garminSourceLabel(null)
+                  : null,
+            },
             uncompressActivityStream(compressed),
           )
         : null;

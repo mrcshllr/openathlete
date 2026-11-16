@@ -368,6 +368,7 @@
   "imported_from": "Importé depuis {provider}",
   "activity_original_file_download": "Télécharger le fichier FIT",
   "activity_gpx_download": "Télécharger le tracé GPX",
+  "activity_gpx_download_failed": "Le tracé n'a pas pu être téléchargé",
   "activity_original_file_failed": "Le fichier n'a pas pu être téléchargé",
   "edit": "Modifier",
   "edit_template": "Modifier un modèle",

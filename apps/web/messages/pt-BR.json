@@ -370,6 +370,7 @@
   "imported_from": "Importado de {provider}",
   "activity_original_file_download": "Baixar arquivo FIT",
   "activity_gpx_download": "Baixar o trajeto GPX",
+  "activity_gpx_download_failed": "Não foi possível baixar o trajeto",
   "activity_original_file_failed": "Não foi possível baixar o arquivo",
   "edit": "Editar",
   "edit_template": "Editar modelo",

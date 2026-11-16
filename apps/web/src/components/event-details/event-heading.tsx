@@ -14,18 +14,14 @@ import { SportIcon } from '../sport-icon/sport-icon';
 import { Badge } from '../ui/badge';
 import { originalFileName } from './original-file-name';
 
-/** Saves the activity's device file, or its track as GPX, under its date and name */
-async function downloadFile(event: ActivityEvent, kind: 'original' | 'gpx') {
+/** Saves the activity's device file under its date and name */
+async function downloadFile(event: ActivityEvent) {
   try {
-    const file =
-      kind === 'gpx'
-        ? await EventAPI.getEventGpx(event.eventId)
-        : await EventAPI.getEventOriginalFile(event.eventId);
+    const file = await EventAPI.getEventOriginalFile(event.eventId);
     const url = URL.createObjectURL(file);
     const link = document.createElement('a');
     link.href = url;
-    link.download =
-      kind === 'gpx' ? originalFileName(event, 'GPX') : originalFileName(event);
+    link.download = originalFileName(event);
     link.click();
     URL.revokeObjectURL(url);
   } catch {
@@ -96,22 +92,10 @@ export function EventHeading({
           <button
             type="button"
             className="cursor-pointer hover:underline"
-            onClick={() => downloadFile(event, 'original')}
+            onClick={() => downloadFile(event)}
           >
             <Download className="h-3 w-3" />
             {m.activity_original_file_download()}
-          </button>
-        </Badge>
-      )}
-      {event.type === EVENT_TYPE.ACTIVITY && event.hasTrack && (
-        <Badge asChild variant="outline" className="text-xs">
-          <button
-            type="button"
-            className="cursor-pointer hover:underline"
-            onClick={() => downloadFile(event, 'gpx')}
-          >
-            <Download className="h-3 w-3" />
-            {m.activity_gpx_download()}
           </button>
         </Badge>
       )}
