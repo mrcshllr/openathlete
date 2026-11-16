@@ -188,6 +188,7 @@ export const routes = {
     getMyAthlete: '/athlete/me',
     getCoachedAthletes: '/athlete/coached',
     getCoaches: '/athlete/coaches',
+    getGarminData: '/athlete/garmin-data',
     inviteCoach: '/athlete/invite/coach',
     inviteAthlete: '/athlete/invite/athlete',
     removeAthlete: (athleteId: number) => `/athlete/${athleteId}`,

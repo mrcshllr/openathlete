@@ -604,11 +604,11 @@ export class SuuntoProviderService
     const activities: ImportedActivity[] = [];
 
     const endTime = options?.endDate ? options.endDate.getTime() : Date.now();
-    // The whole history is asked without a lower bound
+    // The whole history starts at 0, Suunto's own default for `since`
     const startTime = options?.startDate
       ? options.startDate.getTime()
       : options?.wholeHistory
-        ? undefined
+        ? 0
         : endTime - this.importWindowMs;
 
     if (startTime !== undefined && startTime >= endTime) {
@@ -1422,9 +1422,11 @@ export class SuuntoProviderService
             type: metric.type as unknown as MetricType,
             date: metric.date,
             value: roundMetricValue(metric.value),
+            source: 'SUUNTO',
           },
           update: {
             value: roundMetricValue(metric.value),
+            source: 'SUUNTO',
           },
         }),
       ),

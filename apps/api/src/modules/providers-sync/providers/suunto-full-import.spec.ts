@@ -79,7 +79,7 @@ describe('SuuntoProviderService history import', () => {
 
     const result = await service.queueFullImport(account);
 
-    expect(get.mock.calls[0][1].params).not.toHaveProperty('since');
+    expect(get.mock.calls[0][1].params.since).toBe(0);
     expect(queue.addActivityImportJobs).toHaveBeenCalledWith(
       account,
       [expect.objectContaining({ externalId: 'old' })],

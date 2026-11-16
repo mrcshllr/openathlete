@@ -54,9 +54,11 @@ const KINDS: {
 const COLOR = 'var(--chart-2)';
 
 function EfficiencyChart({
+  athleteId,
   data,
   kind,
 }: {
+  athleteId: number;
   data: StatisticsEfficiencyDto;
   kind: (typeof KINDS)[number];
 }) {
@@ -171,6 +173,7 @@ function EfficiencyChart({
       </ChartContainer>
       <div className="flex justify-end">
         <ExportButton
+          athleteId={athleteId}
           name={`efficiency-${kind.id}`}
           header={['date', 'activity', kind.id, 'average', 'trend']}
           rows={() =>
@@ -234,7 +237,7 @@ export function EfficiencyCard({
               onChange={setChosen}
               items={kinds.map(({ id, label }) => ({ id, label }))}
             />
-            <EfficiencyChart data={data} kind={kind} />
+            <EfficiencyChart athleteId={athleteId} data={data} kind={kind} />
           </>
         ) : (
           <p className="p-6 text-center text-sm text-muted-foreground">

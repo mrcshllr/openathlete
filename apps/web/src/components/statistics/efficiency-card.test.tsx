@@ -18,6 +18,7 @@ vi.mock('../ui/chart', () => ({
   ChartTooltipContent: () => null,
 }));
 vi.mock('./metric-info', () => ({ MetricInfo: () => null }));
+vi.mock('./export-button', () => ({ ExportButton: () => null }));
 // Every message renders as its key, followed by its parameters
 vi.mock('@/paraglide/messages', () => ({
   m: new Proxy(
