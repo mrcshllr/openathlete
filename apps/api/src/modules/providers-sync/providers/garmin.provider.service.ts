@@ -29,6 +29,7 @@ import {
   extractGarminFitRpe,
   mapGarminActivityType,
 } from '../../core/helpers/garmin';
+import { savingCompletesHeartRateProfile } from '../../core/helpers/heart-rate-profile';
 import {
   roundCadence,
   roundDistance,
@@ -1281,25 +1282,32 @@ export class GarminProviderService
     );
     if (valid.length === 0) return;
 
-    await this.prisma.$transaction(
-      valid.map((metric) =>
-        this.prisma.athleteMetric.upsert({
-          where: {
-            athleteId_type_date: {
-              athleteId,
-              type: metric.type,
-              date: metric.date,
-            },
-          },
-          create: {
-            athleteId,
-            type: metric.type,
-            date: metric.date,
-            value: roundMetricValue(metric.value),
-          },
-          update: { value: roundMetricValue(metric.value) },
-        }),
-      ),
+    const completed = await savingCompletesHeartRateProfile(
+      this.prisma,
+      athleteId,
+      valid.map((metric) => metric.type),
+      () =>
+        this.prisma.$transaction(
+          valid.map((metric) =>
+            this.prisma.athleteMetric.upsert({
+              where: {
+                athleteId_type_date: {
+                  athleteId,
+                  type: metric.type,
+                  date: metric.date,
+                },
+              },
+              create: {
+                athleteId,
+                type: metric.type,
+                date: metric.date,
+                value: roundMetricValue(metric.value),
+              },
+              update: { value: roundMetricValue(metric.value) },
+            }),
+          ),
+        ),
     );
+    if (completed) await this.queueService.addTrainingLoadRecalcJob(athleteId);
   }
 }
