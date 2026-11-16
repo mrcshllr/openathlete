@@ -369,6 +369,7 @@
   "failed_to_modify_event": "Impossibile modificare l'evento",
   "imported_from": "Importato da {provider}",
   "activity_original_file_download": "Scarica il file FIT",
+  "activity_gpx_download": "Scarica la traccia GPX",
   "activity_original_file_failed": "Impossibile scaricare il file",
   "edit": "Modifica",
   "edit_template": "Modifica modello",

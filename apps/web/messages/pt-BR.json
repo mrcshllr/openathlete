@@ -369,6 +369,7 @@
   "failed_to_modify_event": "Não foi possível modificar o evento",
   "imported_from": "Importado de {provider}",
   "activity_original_file_download": "Baixar arquivo FIT",
+  "activity_gpx_download": "Baixar o trajeto GPX",
   "activity_original_file_failed": "Não foi possível baixar o arquivo",
   "edit": "Editar",
   "edit_template": "Editar modelo",

@@ -8,7 +8,10 @@ import { ActivityEvent, EVENT_TYPE } from '@openathlete/shared';
 import { EventHeading } from './event-heading';
 import { originalFileName } from './original-file-name';
 
-const api = vi.hoisted(() => ({ getEventOriginalFile: vi.fn() }));
+const api = vi.hoisted(() => ({
+  getEventOriginalFile: vi.fn(),
+  getEventGpx: vi.fn(),
+}));
 vi.mock('@/api/event/event.api', () => ({ EventAPI: api }));
 vi.mock('../sport-icon/sport-icon', () => ({ SportIcon: () => null }));
 // Every message renders as its key, followed by its parameters.
@@ -46,6 +49,7 @@ describe('EventHeading original file', () => {
     document.body.appendChild(container);
     root = createRoot(container);
     api.getEventOriginalFile.mockReset();
+    api.getEventGpx.mockReset();
   });
 
   afterEach(() => {
@@ -102,5 +106,43 @@ describe('EventHeading original file', () => {
         originalFile: { fileType: 'FIT', size: 1 },
       }),
     ).toBe('2026-01-06-Langer-Lauf-Zurich.fit');
+  });
+
+  const gpxButton = () =>
+    [...container.querySelectorAll('button')].find((button) =>
+      button.textContent?.includes('activity_gpx_download'),
+    );
+
+  it('offers the GPX track for an activity with GPS, whatever its source', async () => {
+    act(() => root.render(<EventHeading event={activity()} />));
+    expect(gpxButton()).toBeUndefined();
+
+    api.getEventGpx.mockResolvedValue(new Blob(['<gpx/>']));
+    URL.createObjectURL = vi.fn(() => 'blob:gpx');
+    URL.revokeObjectURL = vi.fn();
+    let saved = '';
+    const click = vi
+      .spyOn(HTMLAnchorElement.prototype, 'click')
+      .mockImplementation(function (this: HTMLAnchorElement) {
+        saved = this.download;
+      });
+    act(() =>
+      root.render(
+        <EventHeading
+          event={activity({
+            provider: null,
+            externalId: 'gpx-manual:1',
+            hasTrack: true,
+          })}
+        />,
+      ),
+    );
+
+    await act(async () => gpxButton()!.click());
+
+    expect(api.getEventGpx).toHaveBeenCalledWith(7);
+    expect(api.getEventOriginalFile).not.toHaveBeenCalled();
+    expect(saved).toBe('2026-10-14-Morning-Run.gpx');
+    click.mockRestore();
   });
 });
