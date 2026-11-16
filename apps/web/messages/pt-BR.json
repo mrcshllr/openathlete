@@ -2772,5 +2772,17 @@
   "records_vertical_speed": "Velocidade de subida",
   "records_last_days": "Últimos {days} dias",
   "records_threshold_vam": "VAM de limiar {value} m/h: {percent}% dos melhores {minutes} min dos últimos {days} dias.",
-  "records_threshold_vam_help": "Como um FTP para subir: o maior entre a melhor hora e 95% dos melhores 20 minutos."
+  "records_threshold_vam_help": "Como um FTP para subir: o maior entre a melhor hora e 95% dos melhores 20 minutos.",
+  "statistics_run_efficiency": "Eficiência de corrida",
+  "metric_run_efficiency_what": "Quanto uma corrida avança por joule de potência e por batimento, subida incluída: um metro de subida conta como 9 metros e soma 0,14 W por m/h de velocidade de subida. Se sobe com os meses, o mesmo esforço te leva mais longe.",
+  "metric_run_efficiency_limits": "Os fatores vêm de um gráfico do WKO5, não de um estudo. Calor, cansaço, terreno e medidor de potência mexem nos valores: leia a tendência, não uma corrida.",
+  "statistics_efficiency_total": "Distância por batimento",
+  "statistics_efficiency_metabolic": "Potência por batimento",
+  "statistics_efficiency_biomechanical": "Distância por energia",
+  "statistics_efficiency_average": "Média de {count} corridas",
+  "statistics_efficiency_trend": "Tendência",
+  "statistics_efficiency_runs": "Corridas",
+  "statistics_efficiency_read": "No período a tendência mudou {change} ({from} → {to} {unit}).",
+  "statistics_efficiency_read_limit": "Cada ponto é uma corrida. Calor, cansaço e terreno mexem em corridas soltas: a linha de 28 corridas e a tendência dizem mais.",
+  "statistics_efficiency_empty": "Nenhuma corrida com potência ou frequência cardíaca neste período."
 }

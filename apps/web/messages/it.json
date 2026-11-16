@@ -2772,5 +2772,17 @@
   "records_vertical_speed": "Velocità di salita",
   "records_last_days": "Ultimi {days} giorni",
   "records_threshold_vam": "VAM di soglia {value} m/h: {percent}% dei migliori {minutes} min degli ultimi {days} giorni.",
-  "records_threshold_vam_help": "Come un FTP per la salita: il più alto tra la migliore ora e il 95% dei migliori 20 minuti."
+  "records_threshold_vam_help": "Come un FTP per la salita: il più alto tra la migliore ora e il 95% dei migliori 20 minuti.",
+  "statistics_run_efficiency": "Efficienza di corsa",
+  "metric_run_efficiency_what": "Quanto avanza una corsa per joule di potenza e per battito, dislivello compreso: un metro di salita conta come 9 metri e aggiunge 0,14 W per m/h di velocità di salita. Se cresce nei mesi, lo stesso sforzo ti porta più lontano.",
+  "metric_run_efficiency_limits": "I fattori vengono da un grafico WKO5, non da uno studio. Caldo, fatica, terreno e misuratore di potenza spostano i valori: leggi la tendenza, non una corsa.",
+  "statistics_efficiency_total": "Distanza per battito",
+  "statistics_efficiency_metabolic": "Potenza per battito",
+  "statistics_efficiency_biomechanical": "Distanza per energia",
+  "statistics_efficiency_average": "Media di {count} corse",
+  "statistics_efficiency_trend": "Tendenza",
+  "statistics_efficiency_runs": "Corse",
+  "statistics_efficiency_read": "Nel periodo la tendenza è cambiata di {change} ({from} → {to} {unit}).",
+  "statistics_efficiency_read_limit": "Ogni punto è una corsa. Caldo, fatica e terreno spostano le singole corse: la linea di 28 corse e la tendenza dicono di più.",
+  "statistics_efficiency_empty": "Nessuna corsa con potenza o frequenza cardiaca in questo periodo."
 }
