@@ -369,6 +369,7 @@
   "failed_to_modify_event": "Failed to modify event",
   "imported_from": "Imported from {provider}",
   "activity_original_file_download": "Download FIT file",
+  "activity_gpx_download": "Download GPX track",
   "activity_original_file_failed": "The file could not be downloaded",
   "edit": "Edit",
   "edit_template": "Edit template",
