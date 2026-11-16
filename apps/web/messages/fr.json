@@ -2768,5 +2768,9 @@
   "zones_threshold_source_entered": "{metric} saisie : {value}",
   "zones_threshold_economy": "Allure depuis la puissance : {value} J/m, sur {count} sorties plates des {days} derniers jours.",
   "zones_threshold_no_economy": "Pas encore d’allure depuis la puissance : il faut trois sorties plates avec puissance sur 90 jours.",
-  "zones_threshold_apply": "Calculer les zones"
+  "zones_threshold_apply": "Calculer les zones",
+  "records_vertical_speed": "Vitesse ascensionnelle",
+  "records_last_days": "{days} derniers jours",
+  "records_threshold_vam": "VAM au seuil {value} m/h : {percent} % des meilleures {minutes} min des {days} derniers jours.",
+  "records_threshold_vam_help": "Comme une FTP pour la montée : le plus haut entre la meilleure heure et 95 % des meilleures 20 minutes."
 }

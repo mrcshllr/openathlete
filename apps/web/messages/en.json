@@ -2768,5 +2768,9 @@
   "zones_threshold_source_entered": "Entered {metric}: {value}",
   "zones_threshold_economy": "Pace from power: {value} J/m, from {count} flat runs of the last {days} days.",
   "zones_threshold_no_economy": "No pace from power yet: it needs three flat runs with power in the last 90 days.",
-  "zones_threshold_apply": "Calculate zones"
+  "zones_threshold_apply": "Calculate zones",
+  "records_vertical_speed": "Climbing speed",
+  "records_last_days": "Last {days} days",
+  "records_threshold_vam": "Threshold VAM {value} m/h: {percent}% of the best {minutes} min of the last {days} days.",
+  "records_threshold_vam_help": "Like an FTP for climbing: the higher of the best hour and 95% of the best 20 minutes."
 }

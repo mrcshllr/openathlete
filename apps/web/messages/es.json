@@ -2768,5 +2768,9 @@
   "zones_threshold_source_entered": "{metric} introducida: {value}",
   "zones_threshold_economy": "Ritmo desde la potencia: {value} J/m, de {count} carreras llanas de los últimos {days} días.",
   "zones_threshold_no_economy": "Aún no hay ritmo desde la potencia: hacen falta tres carreras llanas con potencia en 90 días.",
-  "zones_threshold_apply": "Calcular zonas"
+  "zones_threshold_apply": "Calcular zonas",
+  "records_vertical_speed": "Velocidad de ascenso",
+  "records_last_days": "Últimos {days} días",
+  "records_threshold_vam": "VAM umbral {value} m/h: {percent} % de los mejores {minutes} min de los últimos {days} días.",
+  "records_threshold_vam_help": "Como un FTP para subir: el mayor entre la mejor hora y el 95 % de los mejores 20 minutos."
 }

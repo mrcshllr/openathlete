@@ -2768,5 +2768,9 @@
   "zones_threshold_source_entered": "{metric} inserita: {value}",
   "zones_threshold_economy": "Passo dalla potenza: {value} J/m, da {count} corse in piano degli ultimi {days} giorni.",
   "zones_threshold_no_economy": "Ancora nessun passo dalla potenza: servono tre corse in piano con potenza negli ultimi 90 giorni.",
-  "zones_threshold_apply": "Calcola le zone"
+  "zones_threshold_apply": "Calcola le zone",
+  "records_vertical_speed": "Velocità di salita",
+  "records_last_days": "Ultimi {days} giorni",
+  "records_threshold_vam": "VAM di soglia {value} m/h: {percent}% dei migliori {minutes} min degli ultimi {days} giorni.",
+  "records_threshold_vam_help": "Come un FTP per la salita: il più alto tra la migliore ora e il 95% dei migliori 20 minuti."
 }

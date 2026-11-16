@@ -2768,5 +2768,9 @@
   "zones_threshold_source_entered": "{metric} informada: {value}",
   "zones_threshold_economy": "Ritmo a partir da potência: {value} J/m, de {count} corridas planas dos últimos {days} dias.",
   "zones_threshold_no_economy": "Ainda sem ritmo a partir da potência: são precisas três corridas planas com potência em 90 dias.",
-  "zones_threshold_apply": "Calcular zonas"
+  "zones_threshold_apply": "Calcular zonas",
+  "records_vertical_speed": "Velocidade de subida",
+  "records_last_days": "Últimos {days} dias",
+  "records_threshold_vam": "VAM de limiar {value} m/h: {percent}% dos melhores {minutes} min dos últimos {days} dias.",
+  "records_threshold_vam_help": "Como um FTP para subir: o maior entre a melhor hora e 95% dos melhores 20 minutos."
 }

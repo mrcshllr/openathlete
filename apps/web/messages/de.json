@@ -2768,5 +2768,9 @@
   "zones_threshold_source_entered": "Eingetragene {metric}: {value}",
   "zones_threshold_economy": "Pace aus Leistung: {value} J/m, aus {count} flachen Läufen der letzten {days} Tage.",
   "zones_threshold_no_economy": "Noch keine Pace aus Leistung: Dafür braucht es drei flache Läufe mit Leistung in den letzten 90 Tagen.",
-  "zones_threshold_apply": "Zonen berechnen"
+  "zones_threshold_apply": "Zonen berechnen",
+  "records_vertical_speed": "Steiggeschwindigkeit",
+  "records_last_days": "Letzte {days} Tage",
+  "records_threshold_vam": "Schwellen-VAM {value} m/h: {percent} % der besten {minutes} min der letzten {days} Tage.",
+  "records_threshold_vam_help": "Wie eine FTP fürs Steigen: das Höhere aus der besten Stunde und 95 % der besten 20 Minuten."
 }
