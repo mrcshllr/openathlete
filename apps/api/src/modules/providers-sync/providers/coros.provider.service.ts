@@ -792,8 +792,8 @@ export class CorosProviderService
           const rounded = roundMetricValue(value);
           await this.prisma.athleteMetric.upsert({
             where: { athleteId_type_date: { athleteId, type, date } },
-            create: { athleteId, type, date, value: rounded },
-            update: { value: rounded },
+            create: { athleteId, type, date, value: rounded, source: 'COROS' },
+            update: { value: rounded, source: 'COROS' },
           });
         }
       },

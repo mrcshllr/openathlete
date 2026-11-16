@@ -2785,5 +2785,7 @@
   "statistics_efficiency_runs": "Läufe",
   "statistics_efficiency_read": "Über den Zeitraum ging der Trend um {change} ({from} → {to} {unit}).",
   "statistics_efficiency_read_limit": "Jeder Punkt ist ein Lauf. Hitze, Müdigkeit und Gelände verschieben einzelne Läufe: Mehr sagen die Linie über 28 Läufe und der Trend.",
-  "statistics_efficiency_empty": "Kein Lauf mit Leistung oder Puls in diesem Zeitraum."
+  "statistics_efficiency_empty": "Kein Lauf mit Leistung oder Puls in diesem Zeitraum.",
+  "garmin_attribution_data": "Enthält Daten von Garmin-Geräten.",
+  "garmin_attribution_insights": "Erkenntnisse teilweise aus Daten von Garmin-Geräten abgeleitet."
 }

@@ -7,6 +7,7 @@ import {
   useGetRecordsQuery,
 } from '@/api/record';
 import { EventDetails } from '@/components/event-details/event-details';
+import { GarminAttribution } from '@/components/garmin-attribution/garmin-attribution';
 import { RecordDetailDialog } from '@/components/records/record-detail-dialog';
 import {
   allTimeRecords,
@@ -487,6 +488,7 @@ export function RecordsView({ athleteId }: P) {
           {openEventId !== null && <EventDetails eventId={openEventId} />}
         </DialogContent>
       </Dialog>
+      <GarminAttribution athleteId={athleteId} />
     </div>
   );
 }

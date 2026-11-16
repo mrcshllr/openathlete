@@ -2785,5 +2785,7 @@
   "statistics_efficiency_runs": "Carreras",
   "statistics_efficiency_read": "En el periodo la tendencia cambió {change} ({from} → {to} {unit}).",
   "statistics_efficiency_read_limit": "Cada punto es una carrera. Calor, fatiga y terreno mueven carreras sueltas: la línea de 28 carreras y la tendencia dicen más.",
-  "statistics_efficiency_empty": "Ninguna carrera con potencia o pulso en este periodo."
+  "statistics_efficiency_empty": "Ninguna carrera con potencia o pulso en este periodo.",
+  "garmin_attribution_data": "Incluye datos proporcionados por dispositivos Garmin.",
+  "garmin_attribution_insights": "Análisis derivados en parte de datos de dispositivos Garmin."
 }

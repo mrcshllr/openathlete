@@ -1,4 +1,5 @@
 import { useGetModeledMetricsQuery } from '@/api/record';
+import { GarminAttribution } from '@/components/garmin-attribution/garmin-attribution';
 import { MetricTile } from '@/components/ui/metric-tile';
 import { SectionLabel } from '@/components/ui/section-label';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -142,22 +143,26 @@ export function ModeledMetrics({ athleteId }: { athleteId?: number }) {
           {m.dashboard_header_no_modeled_metrics({ days: data?.days ?? 90 })}
         </p>
       ) : (
-        <div className="grid grid-cols-3 gap-2">
-          <ModeledFtpTile
-            type={METRIC_TYPE.FTP_RUNNING}
-            ftp={data.ftpRunning}
-            days={data.days}
-          />
-          <ModeledFtpTile
-            type={METRIC_TYPE.FTP_CYCLING}
-            ftp={data.ftpCycling}
-            days={data.days}
-          />
-          <TrainingFocusTile
-            focus={data.trainingFocusRunning}
-            days={data.days}
-          />
-        </div>
+        <>
+          <div className="grid grid-cols-3 gap-2">
+            <ModeledFtpTile
+              type={METRIC_TYPE.FTP_RUNNING}
+              ftp={data.ftpRunning}
+              days={data.days}
+            />
+            <ModeledFtpTile
+              type={METRIC_TYPE.FTP_CYCLING}
+              ftp={data.ftpCycling}
+              days={data.days}
+            />
+            <TrainingFocusTile
+              focus={data.trainingFocusRunning}
+              days={data.days}
+            />
+          </div>
+          {/* Derived from activity power, which Garmin devices may record */}
+          <GarminAttribution athleteId={athleteId} />
+        </>
       )}
     </div>
   );

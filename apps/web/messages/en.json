@@ -2785,5 +2785,7 @@
   "statistics_efficiency_runs": "Runs",
   "statistics_efficiency_read": "Over the period the trend went {change} ({from} → {to} {unit}).",
   "statistics_efficiency_read_limit": "Each dot is a run. Heat, fatigue and terrain move single runs: the line of 28 runs and the trend say more.",
-  "statistics_efficiency_empty": "No run with power or heart rate in this period."
+  "statistics_efficiency_empty": "No run with power or heart rate in this period.",
+  "garmin_attribution_data": "Includes data provided by Garmin devices.",
+  "garmin_attribution_insights": "Insights derived in part from Garmin device-sourced data."
 }

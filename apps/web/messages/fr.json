@@ -2785,5 +2785,7 @@
   "statistics_efficiency_runs": "Sorties",
   "statistics_efficiency_read": "Sur la période, la tendance a évolué de {change} ({from} → {to} {unit}).",
   "statistics_efficiency_read_limit": "Chaque point est une sortie. Chaleur, fatigue et terrain déplacent une sortie seule : la ligne sur 28 sorties et la tendance en disent plus.",
-  "statistics_efficiency_empty": "Aucune sortie avec puissance ou fréquence cardiaque sur cette période."
+  "statistics_efficiency_empty": "Aucune sortie avec puissance ou fréquence cardiaque sur cette période.",
+  "garmin_attribution_data": "Inclut des données fournies par des appareils Garmin.",
+  "garmin_attribution_insights": "Analyses issues en partie de données d'appareils Garmin."
 }

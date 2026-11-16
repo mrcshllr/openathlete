@@ -1,29 +1,30 @@
 import { EventAPI } from '@/api/event/event.api';
 import { m } from '@/paraglide/messages';
+import { isCapacitor } from '@/utils/capacitor';
 import { getConnectorProviderActivityLink } from '@/utils/connector-provider';
+import { downloadFile } from '@/utils/csv';
 import {
   connectorProviderLabelMap,
   eventTypeLabelMap,
 } from '@/utils/label-map/core';
+import { cn } from '@/utils/shadcn';
 import { Download, Trophy } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { ActivityEvent, EVENT_TYPE, Event } from '@openathlete/shared';
 
+import { garminActivityLabel } from '../garmin-attribution/garmin-source';
 import { SportIcon } from '../sport-icon/sport-icon';
 import { Badge } from '../ui/badge';
 import { originalFileName } from './original-file-name';
 
 /** Saves the activity's device file under its date and name */
-async function downloadFile(event: ActivityEvent) {
+async function downloadOriginalFile(event: ActivityEvent) {
   try {
-    const file = await EventAPI.getEventOriginalFile(event.eventId);
-    const url = URL.createObjectURL(file);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = originalFileName(event);
-    link.click();
-    URL.revokeObjectURL(url);
+    downloadFile(
+      originalFileName(event),
+      await EventAPI.getEventOriginalFile(event.eventId),
+    );
   } catch {
     toast.error(m.activity_original_file_failed());
   }
@@ -38,6 +39,12 @@ export function EventHeading({
   /** When the app bar already shows it */
   hideName?: boolean;
 }) {
+  // Garmin requires "Garmin [device model]" beside its activities' title
+  const garminLabel = garminActivityLabel(event);
+  const providerLink =
+    event.type === EVENT_TYPE.ACTIVITY && event.provider && event.externalId
+      ? getConnectorProviderActivityLink(event.provider, event.externalId)
+      : undefined;
   return (
     <div className="flex flex-wrap items-center gap-2 grow text-sm md:text-base">
       {event.type !== EVENT_TYPE.NOTE && event.sport && (
@@ -66,39 +73,50 @@ export function EventHeading({
         event.externalId?.startsWith('tcx-manual:') && (
           <Badge variant="outline">{m.tcx_import_source()}</Badge>
         )}
-      {event.type === EVENT_TYPE.ACTIVITY &&
-        event.externalId &&
+      {garminLabel ? (
+        <Badge
+          variant="outline"
+          className={cn(
+            'text-xs font-normal text-muted-foreground',
+            providerLink && 'cursor-pointer hover:underline',
+          )}
+          data-garmin-attribution="activity"
+          onClick={
+            providerLink ? () => window.open(providerLink, '_blank') : undefined
+          }
+        >
+          {garminLabel}
+        </Badge>
+      ) : (
+        event.type === EVENT_TYPE.ACTIVITY &&
         event.provider &&
-        getConnectorProviderActivityLink(event.provider, event.externalId) && (
+        providerLink && (
           <Badge
             variant="outline"
             className="cursor-pointer hover:underline text-xs"
-            onClick={() => {
-              const link = getConnectorProviderActivityLink(
-                event.provider!,
-                event.externalId,
-              );
-              if (!link) return;
-              window.open(link, '_blank');
-            }}
+            onClick={() => window.open(providerLink, '_blank')}
           >
             {m.imported_from({
               provider: connectorProviderLabelMap[event.provider],
             })}
           </Badge>
-        )}
-      {event.type === EVENT_TYPE.ACTIVITY && event.originalFile && (
-        <Badge asChild variant="outline" className="text-xs">
-          <button
-            type="button"
-            className="cursor-pointer hover:underline"
-            onClick={() => downloadFile(event)}
-          >
-            <Download className="h-3 w-3" />
-            {m.activity_original_file_download()}
-          </button>
-        </Badge>
+        )
       )}
+      {/* Not in the native apps: their web view has no download folder */}
+      {event.type === EVENT_TYPE.ACTIVITY &&
+        event.originalFile &&
+        !isCapacitor() && (
+          <Badge asChild variant="outline" className="text-xs">
+            <button
+              type="button"
+              className="cursor-pointer hover:underline"
+              onClick={() => downloadOriginalFile(event)}
+            >
+              <Download className="h-3 w-3" />
+              {m.activity_original_file_download()}
+            </button>
+          </Badge>
+        )}
     </div>
   );
 }

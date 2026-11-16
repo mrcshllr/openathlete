@@ -2785,5 +2785,7 @@
   "statistics_efficiency_runs": "Corse",
   "statistics_efficiency_read": "Nel periodo la tendenza è cambiata di {change} ({from} → {to} {unit}).",
   "statistics_efficiency_read_limit": "Ogni punto è una corsa. Caldo, fatica e terreno spostano le singole corse: la linea di 28 corse e la tendenza dicono di più.",
-  "statistics_efficiency_empty": "Nessuna corsa con potenza o frequenza cardiaca in questo periodo."
+  "statistics_efficiency_empty": "Nessuna corsa con potenza o frequenza cardiaca in questo periodo.",
+  "garmin_attribution_data": "Include dati forniti da dispositivi Garmin.",
+  "garmin_attribution_insights": "Analisi derivate in parte da dati di dispositivi Garmin."
 }
