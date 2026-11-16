@@ -2756,5 +2756,9 @@
   "club_session_answer_not_going": "Não vai",
   "club_session_no_answer": "Ainda sem resposta",
   "plan_for_athletes_day_action": "Copiar o dia para outros atletas",
-  "plan_for_athletes_day_label": "Itens de {day}: {count}"
+  "plan_for_athletes_day_label": "Itens de {day}: {count}",
+  "records_vertical_speed": "Velocidade de subida",
+  "records_last_days": "Últimos {days} dias",
+  "records_threshold_vam": "VAM de limiar {value} m/h: {percent}% dos melhores {minutes} min dos últimos {days} dias.",
+  "records_threshold_vam_help": "Como um FTP para subir: o maior entre a melhor hora e 95% dos melhores 20 minutos."
 }

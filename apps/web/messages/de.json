@@ -2756,5 +2756,9 @@
   "club_session_answer_not_going": "Kommt nicht",
   "club_session_no_answer": "Noch keine Antwort",
   "plan_for_athletes_day_action": "Tag auf andere Athleten kopieren",
-  "plan_for_athletes_day_label": "Einträge vom {day}: {count}"
+  "plan_for_athletes_day_label": "Einträge vom {day}: {count}",
+  "records_vertical_speed": "Steiggeschwindigkeit",
+  "records_last_days": "Letzte {days} Tage",
+  "records_threshold_vam": "Schwellen-VAM {value} m/h: {percent} % der besten {minutes} min der letzten {days} Tage.",
+  "records_threshold_vam_help": "Wie eine FTP fürs Steigen: das Höhere aus der besten Stunde und 95 % der besten 20 Minuten."
 }

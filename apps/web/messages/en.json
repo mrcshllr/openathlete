@@ -2756,5 +2756,9 @@
   "club_session_answer_not_going": "Not coming",
   "club_session_no_answer": "No answer yet",
   "plan_for_athletes_day_action": "Copy the day to other athletes",
-  "plan_for_athletes_day_label": "Items of {day}: {count}"
+  "plan_for_athletes_day_label": "Items of {day}: {count}",
+  "records_vertical_speed": "Climbing speed",
+  "records_last_days": "Last {days} days",
+  "records_threshold_vam": "Threshold VAM {value} m/h: {percent}% of the best {minutes} min of the last {days} days.",
+  "records_threshold_vam_help": "Like an FTP for climbing: the higher of the best hour and 95% of the best 20 minutes."
 }

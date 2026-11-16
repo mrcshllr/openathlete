@@ -12,7 +12,7 @@ import { isPlausibleRecord } from '../helpers/record-plausibility';
  * Bump when computeRecords changes: activities computed with an older
  * version are recomputed in the background (RecordsBackfillService).
  */
-export const RECORDS_VERSION = 4;
+export const RECORDS_VERSION = 5;
 
 @Injectable()
 export class ActivityRecordsService {
