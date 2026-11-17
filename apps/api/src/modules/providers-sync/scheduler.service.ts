@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Cron } from '@nestjs/schedule';
 
@@ -12,6 +12,9 @@ import {
 import { PrismaService } from '../prisma/services/prisma.service';
 import { ProviderRateLimitError } from './errors/provider-rate-limit.error';
 import { ProviderExportService } from './export.service';
+
+/** Lets the providers' tokens and queues settle after a start */
+const STARTUP_SYNC_DELAY_MS = 60_000;
 
 type ProviderKey = 'garmin' | 'suunto' | 'coros';
 type ProviderEnum = 'GARMIN' | 'SUUNTO' | 'COROS';
@@ -41,7 +44,7 @@ function providerKeyToEnum(provider: ProviderKey): ProviderEnum {
 }
 
 @Injectable()
-export class ProviderExportScheduler {
+export class ProviderExportScheduler implements OnApplicationBootstrap {
   private readonly logger = new Logger(ProviderExportScheduler.name);
 
   constructor(
@@ -58,6 +61,23 @@ export class ProviderExportScheduler {
     if (this.configService.get('ENABLE_ACTIVITY_IMPORT') !== true) return;
     this.logger.log('Starting daily provider export sync');
     await this.syncExportsForWindow();
+  }
+
+  /**
+   * Selfhost: the week is also synced once after each start, so an update
+   * that changes what a watch receives reaches it right away instead of at
+   * 00:10 UTC. Unchanged workouts are skipped by their hash.
+   */
+  onApplicationBootstrap() {
+    if (this.configService.get('ENABLE_ACTIVITY_IMPORT') !== true) return;
+    setTimeout(() => {
+      this.logger.log('Starting provider export sync after start');
+      this.syncExportsForWindow().catch((err: unknown) =>
+        this.logger.error(
+          `Export sync after start failed: ${err instanceof Error ? err.message : String(err)}`,
+        ),
+      );
+    }, STARTUP_SYNC_DELAY_MS).unref();
   }
 
   // Manual sync method (can be called from API endpoint)
