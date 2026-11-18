@@ -165,11 +165,12 @@ export const ZONE_MODELS: ZoneModel[] = [
   {
     id: 'palladino',
     author: 'Steve Palladino',
-    source: 'Palladino Power Project running power zones',
+    source: 'Palladino Power Project, Running Power Zones 2017',
     tables: [
       {
-        // 1A 50-65 %, 1B 65-75, 1C 75-80, 2 81-87, 3A 88-94, 3B 95-101,
-        // 4 102-105, 5 106-116, 6 117-150, 7 > 150 % of FTP. Merged: zone 1
+        // 1A 50-65 %, 1B 65-75, 1C 75-80, 2 above 80 to below 88, 3A 88 to
+        // below 95, 3B 95-101, 4 above 101 to below 106, 5 106-116, 6 above
+        // 116 to 150, 7 above 150 % of FTP or CP. Merged: zone 1
         // takes 1A-1C, zone 4 3B and 4, zone 5 everything from 106 %
         type: TRAINING_ZONE_TYPE.POWER,
         sport: 'run',
@@ -192,11 +193,11 @@ export const ZONE_MODELS: ZoneModel[] = [
   {
     id: 'vance',
     author: 'Jim Vance',
-    source: 'Vance, Run with Power',
+    source: 'Vance, Run with Power, table 6.1',
     tables: [
       {
-        // Z1 ≤ 80 %, Z2 81-88, Z3 89-95, Z4 96-105, Z5 106-115, Z6 116-128,
-        // Z7 > 128 % of rFTPw
+        // Table 6.1 of Run with Power: Z1 < 81 %, Z2 81-88, Z3 89-95,
+        // Z4 96-105, Z5 106-115, Z6 116-128, Z7 129 % and more of rFTPw
         type: TRAINING_ZONE_TYPE.POWER,
         sport: 'run',
         zones: [...FIVE, z('6', 'anaerobic', 4), z('7', 'neuromuscular', 4)],
