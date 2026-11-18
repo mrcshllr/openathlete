@@ -38,7 +38,7 @@ export interface ZoneModelTable {
 }
 
 export interface ZoneModel {
-  id: 'arend' | 'friel' | 'coggan' | 'palladino' | 'vance' | 'stryd';
+  id: 'friel' | 'coggan' | 'palladino' | 'vance' | 'stryd';
   author: string;
   source: string;
   tables: ZoneModelTable[];
@@ -74,33 +74,6 @@ const FRIEL_SEVEN: ModelZone[] = [
  * ones; a zone ends a beat, a watt or a second before the next one starts.
  */
 export const ZONE_MODELS: ZoneModel[] = [
-  {
-    // The athlete's own test: 45 minutes, minutes 10 to 30 set the threshold
-    id: 'arend',
-    author: 'Matthias Arend',
-    source:
-      'Two Peaks Endurance Training, "So findest du deine Stärken und Schwächen heraus"',
-    tables: [
-      {
-        type: TRAINING_ZONE_TYPE.HEARTRATE,
-        sport: null,
-        zones: FIVE,
-        starts: [0, 0.8, 0.88, 0.96, 1.02],
-      },
-      {
-        type: TRAINING_ZONE_TYPE.POWER,
-        sport: null,
-        zones: FIVE,
-        starts: [0, 0.8, 0.88, 0.96, 1.02],
-      },
-      {
-        type: TRAINING_ZONE_TYPE.PACE,
-        sport: null,
-        zones: FIVE,
-        paceLimits: [1.28, 1.14, 1.07, 1],
-      },
-    ],
-  },
   {
     id: 'friel',
     author: 'Joe Friel',
@@ -296,4 +269,47 @@ export function mergedTable(table: ZoneModelTable): ZoneModelTable {
       table.paceLimits &&
       firsts.slice(1).map((index) => table.paceLimits![index - 1]),
   };
+}
+
+/**
+ * Starting limits of five zones set by hand: those of the first published
+ * model for the type and sport, merged, or of a common one when none fits
+ * (Friel for heart rate and pace, Coggan for power)
+ */
+export function defaultCustomLimits(
+  type: TRAINING_ZONE_TYPE,
+  sports: string[],
+): number[] {
+  const [first] = zoneModelChoices(type, sports);
+  const merged = first && mergedTable(first.table);
+  if (merged?.starts) return merged.starts.slice(1);
+  if (merged?.paceLimits) return merged.paceLimits;
+  if (type === TRAINING_ZONE_TYPE.PACE) return [1.29, 1.14, 1.06, 0.99];
+  if (type === TRAINING_ZONE_TYPE.POWER) return [0.56, 0.76, 0.91, 1.06];
+  return [0.85, 0.9, 0.95, 1];
+}
+
+/**
+ * Five zones from four limits set by hand, as shares of the threshold: the
+ * lower limits of zones 2 to 5 for heart rate and power, rising; the paces
+ * between zones for pace, as factors of the threshold pace, falling. Null
+ * when they are not in order or not above zero.
+ */
+export function customTable(
+  type: TRAINING_ZONE_TYPE,
+  limits: number[],
+): ZoneModelTable | null {
+  if (limits.length !== 4 || limits.some((limit) => !(limit > 0))) return null;
+  const pace = type === TRAINING_ZONE_TYPE.PACE;
+  const ordered = limits.every((limit, index) =>
+    index === 0
+      ? true
+      : pace
+        ? limit < limits[index - 1]
+        : limit > limits[index - 1],
+  );
+  if (!ordered) return null;
+  return pace
+    ? { type, sport: null, zones: FIVE, paceLimits: limits }
+    : { type, sport: null, zones: FIVE, starts: [0, ...limits] };
 }

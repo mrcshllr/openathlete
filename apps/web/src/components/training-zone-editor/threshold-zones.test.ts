@@ -3,7 +3,12 @@ import { describe, expect, it, vi } from 'vitest';
 import { TRAINING_ZONE_TYPE } from '@openathlete/shared';
 
 import { thresholdZones } from './threshold-zones';
-import { ZONE_MODELS, ZoneModelTable, mergedTable } from './zone-models';
+import {
+  ZONE_MODELS,
+  ZoneModelTable,
+  customTable,
+  mergedTable,
+} from './zone-models';
 import { formatPace } from './zone-profiles';
 
 // Every message renders as its key
@@ -27,11 +32,11 @@ const limits = (zones: { min: number; max: number }[]) =>
   zones.map((zone) => [zone.min, zone.max]);
 
 describe('thresholdZones', () => {
-  it("splits power at Arend's 80, 88, 96 and 102 % of FTP", () => {
+  it('splits power at limits set by hand, 80, 88, 96 and 102 %', () => {
     const zones = thresholdZones(
       TRAINING_ZONE_TYPE.POWER,
       318,
-      table('arend', TRAINING_ZONE_TYPE.POWER),
+      customTable(TRAINING_ZONE_TYPE.POWER, [0.8, 0.88, 0.96, 1.02])!,
       label,
     )!;
     expect(limits(zones)).toEqual([
@@ -137,15 +142,15 @@ describe('thresholdZones', () => {
   });
 
   it('turns a threshold pace into pace zones, slowest first', () => {
-    // 4:10/km by Arend
-    const arend = thresholdZones(
+    // 4:10/km, limits set by hand
+    const custom = thresholdZones(
       TRAINING_ZONE_TYPE.PACE,
       4 + 10 / 60,
-      table('arend', TRAINING_ZONE_TYPE.PACE),
+      customTable(TRAINING_ZONE_TYPE.PACE, [1.28, 1.14, 1.07, 1])!,
       label,
     )!;
     expect(
-      arend.map((zone) => `${formatPace(zone.min)}-${formatPace(zone.max)}`),
+      custom.map((zone) => `${formatPace(zone.min)}-${formatPace(zone.max)}`),
     ).toEqual([
       '5:20-8:20',
       '4:45-5:19',
@@ -167,7 +172,7 @@ describe('thresholdZones', () => {
   });
 
   it('needs a threshold and a table of the zone type', () => {
-    const power = table('arend', TRAINING_ZONE_TYPE.POWER);
+    const power = table('coggan', TRAINING_ZONE_TYPE.POWER, 'bike');
     expect(
       thresholdZones(TRAINING_ZONE_TYPE.POWER, 0, power, label),
     ).toBeNull();

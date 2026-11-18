@@ -21,9 +21,13 @@ import {
 import { thresholdZones } from './threshold-zones';
 import {
   ZoneModelChoice,
+  ZoneModelSport,
   ZoneRole,
+  customTable,
+  defaultCustomLimits,
   mergedTable,
   zoneModelChoices,
+  zoneModelSport,
 } from './zone-models';
 import { ZoneDraft, formatPace, parsePace } from './zone-profiles';
 
@@ -47,15 +51,30 @@ const ROLE_LABEL: Record<ZoneRole, () => string> = {
   neuromuscular: m.zones_role_neuromuscular,
 };
 
+const CUSTOM = 'custom';
+
 const choiceId = ({ model, table }: ZoneModelChoice) =>
   `${model.id}-${table.sport ?? 'all'}`;
 
+const chip = (active: boolean) =>
+  cn(
+    'min-h-11 rounded-full border px-3 text-xs font-medium transition-colors md:min-h-8',
+    active
+      ? 'border-primary bg-primary text-primary-foreground'
+      : 'text-muted-foreground hover:text-foreground',
+  );
+
+const sportLabel = (sport: ZoneModelSport) =>
+  sport === 'run' ? m.zones_model_sport_run() : m.zones_model_sport_bike();
+
 /**
- * Zones from a threshold the athlete picks (the modelled or the entered FTP,
- * a threshold heart rate, or a pace from a power threshold and the athlete's
- * own flat runs) by a published model: as many zones as the model has, or
- * merged into five, the count plans and templates are built on. Fills the
- * editor; saving keeps them.
+ * Zones from a threshold the athlete picks (the modelled or the entered FTP
+ * of the sport, a threshold heart rate, or a pace from a power threshold and
+ * the athlete's own flat runs), by a published model or by five limits set
+ * by hand. A model with sub-zones gives five zones, the count plans and
+ * templates are built on, unless its own zones are asked for. Running and
+ * cycling keep their own models and their own FTP. Fills the editor; saving
+ * keeps them.
  */
 export function ThresholdZonesPanel({
   athleteId,
@@ -66,7 +85,7 @@ export function ThresholdZonesPanel({
 }: {
   athleteId: number;
   type: TRAINING_ZONE_TYPE;
-  /** The sports of the zone set: they choose the models offered */
+  /** The sports of the zone set: they choose the models and the FTP offered */
   sports: string[];
   /** Zones of the set now: a model with more or fewer changes them */
   currentCount: number;
@@ -75,21 +94,35 @@ export function ThresholdZonesPanel({
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState('');
   const [sourceId, setSourceId] = useState<string | null>(null);
-  const choices = zoneModelChoices(type, sports);
-  const [chosenId, setChosenId] = useState<string | null>(null);
-  const choice =
-    choices.find((item) => choiceId(item) === chosenId) ?? choices[0];
   const [original, setOriginal] = useState(false);
-  const hasSubZones = !!choice && choice.table.zones.length !== 5;
-  const table =
-    choice && (original || !hasSubZones)
-      ? choice.table
-      : choice && mergedTable(choice.table);
-  // Several sports of a mixed set: say which one a table is for
-  const mixed = new Set(choices.map(({ table: t }) => t.sport)).size > 1;
   const isPace = type === TRAINING_ZONE_TYPE.PACE;
   const isPower = type === TRAINING_ZONE_TYPE.POWER;
   const usesPower = isPace || isPower;
+
+  const choices = zoneModelChoices(type, sports);
+  const [chosenId, setChosenId] = useState<string | null>(null);
+  const custom = chosenId === CUSTOM || choices.length === 0;
+  const choice = custom
+    ? null
+    : (choices.find((item) => choiceId(item) === chosenId) ?? choices[0]);
+  const [limits, setLimits] = useState(() =>
+    defaultCustomLimits(type, sports).map((share) =>
+      String(Math.round(share * 100)),
+    ),
+  );
+  const hasSubZones = !!choice && choice.table.zones.length !== 5;
+  const table = custom
+    ? customTable(
+        type,
+        limits.map((value) => Number(value.replace(',', '.')) / 100),
+      )
+    : choice && (original || !hasSubZones)
+      ? choice.table
+      : choice && mergedTable(choice.table);
+  // Running and cycling apart: the sport of the model, else of the set
+  const setSport = zoneModelSport(sports);
+  const sport = choice?.table.sport ?? setSport;
+  const mixed = new Set(choices.map((item) => item.table.sport)).size > 1;
 
   // Read only once the panel is open
   const { data: modeled } = useGetModeledMetricsQuery(athleteId, {
@@ -103,12 +136,17 @@ export function ThresholdZonesPanel({
   });
 
   const powers = [
-    {
-      type: METRIC_TYPE.FTP_RUNNING,
-      modeled: modeled?.ftpRunning?.value,
-      entered: metrics?.[METRIC_TYPE.FTP_RUNNING]?.value,
-    },
-    ...(isPower
+    ...(sport !== 'bike'
+      ? [
+          {
+            type: METRIC_TYPE.FTP_RUNNING,
+            modeled: modeled?.ftpRunning?.value,
+            entered: metrics?.[METRIC_TYPE.FTP_RUNNING]?.value,
+          },
+        ]
+      : []),
+    // Pace comes from running power only
+    ...(isPower && sport !== 'run'
       ? [
           {
             type: METRIC_TYPE.FTP_CYCLING,
@@ -159,6 +197,12 @@ export function ThresholdZonesPanel({
     setInput(isPace ? formatPace(source.value) : String(source.value));
   };
 
+  const choose = (id: string) => {
+    setChosenId(id);
+    // A source of the other sport no longer fits
+    setSourceId(null);
+  };
+
   const apply = () => {
     if (!valid || !table) return;
     const zones = thresholdZones(type, threshold, table, (zone) => ({
@@ -204,85 +248,123 @@ export function ThresholdZonesPanel({
           {m.zones_threshold_help()}
         </p>
       </div>
-      {choices.length > 0 && (
-        <div className="space-y-1.5">
-          <p className="text-xs font-medium">{m.zones_model_label()}</p>
+
+      <div className="space-y-1.5">
+        <p className="text-xs font-medium">{m.zones_model_label()}</p>
+        <div className="flex flex-wrap gap-1.5" role="group">
+          {choices.map((item) => {
+            const id = choiceId(item);
+            return (
+              <button
+                key={id}
+                type="button"
+                aria-pressed={!custom && choice === item}
+                onClick={() => choose(id)}
+                className={chip(!custom && choice === item)}
+              >
+                {mixed && item.table.sport
+                  ? m.zones_model_for_sport({
+                      author: item.model.author,
+                      sport: sportLabel(item.table.sport),
+                    })
+                  : item.model.author}
+              </button>
+            );
+          })}
+          <button
+            type="button"
+            aria-pressed={custom}
+            onClick={() => choose(CUSTOM)}
+            className={chip(custom)}
+          >
+            {m.zones_model_custom()}
+          </button>
+        </div>
+
+        {hasSubZones && (
           <div className="flex flex-wrap gap-1.5" role="group">
-            {choices.map((item) => {
-              const id = choiceId(item);
-              const active = choice && choiceId(choice) === id;
-              return (
-                <button
-                  key={id}
-                  type="button"
-                  aria-pressed={!!active}
-                  onClick={() => setChosenId(id)}
-                  className={cn(
-                    'min-h-11 rounded-full border px-3 text-xs font-medium transition-colors md:min-h-8',
-                    active
-                      ? 'border-primary bg-primary text-primary-foreground'
-                      : 'text-muted-foreground hover:text-foreground',
-                  )}
-                >
-                  {mixed && item.table.sport
-                    ? m.zones_model_for_sport({
-                        author: item.model.author,
-                        sport:
-                          item.table.sport === 'run'
-                            ? m.zones_model_sport_run()
-                            : m.zones_model_sport_bike(),
-                      })
-                    : item.model.author}
-                </button>
-              );
-            })}
-          </div>
-          {hasSubZones && (
-            <div className="flex flex-wrap gap-1.5" role="group">
-              {(
+            {(
+              [
+                [false, m.zones_model_merged()],
                 [
-                  [false, m.zones_model_merged()],
-                  [
-                    true,
-                    m.zones_model_original({
-                      count: choice.table.zones.length,
-                    }),
-                  ],
-                ] as const
-              ).map(([value, text]) => (
-                <button
-                  key={String(value)}
-                  type="button"
-                  aria-pressed={original === value}
-                  onClick={() => setOriginal(value)}
-                  className={cn(
-                    'min-h-11 rounded-full border px-3 text-xs font-medium transition-colors md:min-h-8',
-                    original === value
-                      ? 'border-primary bg-primary text-primary-foreground'
-                      : 'text-muted-foreground hover:text-foreground',
-                  )}
-                >
-                  {text}
-                </button>
+                  true,
+                  m.zones_model_original({ count: choice.table.zones.length }),
+                ],
+              ] as const
+            ).map(([value, text]) => (
+              <button
+                key={String(value)}
+                type="button"
+                aria-pressed={original === value}
+                onClick={() => setOriginal(value)}
+                className={chip(original === value)}
+              >
+                {text}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {custom ? (
+          <div className="space-y-1.5" data-testid="custom-limits">
+            <p className="text-xs text-muted-foreground">
+              {isPace
+                ? m.zones_model_custom_pace_help()
+                : m.zones_model_custom_help()}
+            </p>
+            <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+              {limits.map((value, index) => (
+                <div key={index} className="space-y-1">
+                  <Label htmlFor={`zones-limit-${index}`} className="text-xs">
+                    {isPace
+                      ? m.zones_model_custom_pace_limit({
+                          from: index + 1,
+                          to: index + 2,
+                        })
+                      : m.zones_model_custom_limit({ zone: index + 2 })}
+                  </Label>
+                  <Input
+                    id={`zones-limit-${index}`}
+                    inputMode="decimal"
+                    value={value}
+                    onChange={(event) =>
+                      setLimits((current) =>
+                        current.map((item, at) =>
+                          at === index ? event.target.value : item,
+                        ),
+                      )
+                    }
+                  />
+                </div>
               ))}
             </div>
-          )}
-          {choice && (
+            {!table && (
+              <p role="alert" className="text-xs text-destructive">
+                {isPace
+                  ? m.zones_model_custom_pace_invalid()
+                  : m.zones_model_custom_invalid()}
+              </p>
+            )}
+          </div>
+        ) : (
+          choice && (
             <p className="text-xs text-muted-foreground">
               {m.zones_model_source({ source: choice.model.source })}
             </p>
-          )}
-          {count > 0 && count !== currentCount && (
-            <p role="status" className="text-xs text-oa-warning">
-              {m.zones_model_count_change({
-                from: currentCount,
-                to: count,
-                kept: Math.min(currentCount, count),
-              })}
-            </p>
-          )}
-        </div>
-      )}
+          )
+        )}
+
+        {count > 0 && count !== currentCount && (
+          <p role="status" className="text-xs text-destructive">
+            {m.zones_model_count_change({
+              from: currentCount,
+              to: count,
+              kept: Math.min(currentCount, count),
+            })}
+          </p>
+        )}
+      </div>
+
       {sources.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
           {sources.map((source) => (
@@ -291,12 +373,7 @@ export function ThresholdZonesPanel({
               type="button"
               aria-pressed={sourceId === source.id}
               onClick={() => pick(source)}
-              className={cn(
-                'min-h-11 rounded-full border px-3 text-xs font-medium transition-colors md:min-h-8',
-                sourceId === source.id
-                  ? 'border-primary bg-primary text-primary-foreground'
-                  : 'text-muted-foreground hover:text-foreground',
-              )}
+              className={chip(sourceId === source.id)}
             >
               {source.label}
             </button>
