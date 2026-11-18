@@ -19,6 +19,12 @@ import {
 } from '@openathlete/shared';
 
 import { thresholdZones } from './threshold-zones';
+import {
+  ZoneModelChoice,
+  ZoneRole,
+  mergedTable,
+  zoneModelChoices,
+} from './zone-models';
 import { ZoneDraft, formatPace, parsePace } from './zone-profiles';
 
 interface Source {
@@ -30,23 +36,57 @@ interface Source {
 
 const round = (value: number) => Math.round(value);
 
+const ROLE_LABEL: Record<ZoneRole, () => string> = {
+  recovery: m.ui_active_recovery,
+  endurance: m.endurance,
+  tempo: m.tempo,
+  subThreshold: m.zones_role_sub_threshold,
+  threshold: m.threshold,
+  vo2max: m.vo2_max,
+  anaerobic: m.zones_role_anaerobic,
+  neuromuscular: m.zones_role_neuromuscular,
+};
+
+const choiceId = ({ model, table }: ZoneModelChoice) =>
+  `${model.id}-${table.sport ?? 'all'}`;
+
 /**
- * Five zones from a threshold the athlete picks: the modelled or the entered
- * FTP, a threshold heart rate, or a pace from a power threshold and the
- * athlete's own flat runs. Fills the editor; saving keeps them.
+ * Zones from a threshold the athlete picks (the modelled or the entered FTP,
+ * a threshold heart rate, or a pace from a power threshold and the athlete's
+ * own flat runs) by a published model: as many zones as the model has, or
+ * merged into five, the count plans and templates are built on. Fills the
+ * editor; saving keeps them.
  */
 export function ThresholdZonesPanel({
   athleteId,
   type,
+  sports,
+  currentCount,
   onApply,
 }: {
   athleteId: number;
   type: TRAINING_ZONE_TYPE;
+  /** The sports of the zone set: they choose the models offered */
+  sports: string[];
+  /** Zones of the set now: a model with more or fewer changes them */
+  currentCount: number;
   onApply: (zones: Omit<ZoneDraft, 'key'>[]) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState('');
   const [sourceId, setSourceId] = useState<string | null>(null);
+  const choices = zoneModelChoices(type, sports);
+  const [chosenId, setChosenId] = useState<string | null>(null);
+  const choice =
+    choices.find((item) => choiceId(item) === chosenId) ?? choices[0];
+  const [original, setOriginal] = useState(false);
+  const hasSubZones = !!choice && choice.table.zones.length !== 5;
+  const table =
+    choice && (original || !hasSubZones)
+      ? choice.table
+      : choice && mergedTable(choice.table);
+  // Several sports of a mixed set: say which one a table is for
+  const mixed = new Set(choices.map(({ table: t }) => t.sport)).size > 1;
   const isPace = type === TRAINING_ZONE_TYPE.PACE;
   const isPower = type === TRAINING_ZONE_TYPE.POWER;
   const usesPower = isPace || isPower;
@@ -120,22 +160,17 @@ export function ThresholdZonesPanel({
   };
 
   const apply = () => {
-    if (!valid) return;
-    const zones = thresholdZones(type, threshold, {
-      names: [m.zone_1(), m.zone_2(), m.zone_3(), m.zone_4(), m.zone_5()],
-      descriptions: [
-        m.ui_active_recovery(),
-        m.endurance(),
-        m.tempo(),
-        m.threshold(),
-        m.vo2_max(),
-      ],
-    });
+    if (!valid || !table) return;
+    const zones = thresholdZones(type, threshold, table, (zone) => ({
+      name: m.zones_model_zone_name({ id: zone.id }),
+      description: ROLE_LABEL[zone.role](),
+    }));
     if (zones) {
       onApply(zones);
       setOpen(false);
     }
   };
+  const count = table?.zones.length ?? 0;
 
   if (!open) {
     return (
@@ -169,6 +204,85 @@ export function ThresholdZonesPanel({
           {m.zones_threshold_help()}
         </p>
       </div>
+      {choices.length > 0 && (
+        <div className="space-y-1.5">
+          <p className="text-xs font-medium">{m.zones_model_label()}</p>
+          <div className="flex flex-wrap gap-1.5" role="group">
+            {choices.map((item) => {
+              const id = choiceId(item);
+              const active = choice && choiceId(choice) === id;
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  aria-pressed={!!active}
+                  onClick={() => setChosenId(id)}
+                  className={cn(
+                    'min-h-11 rounded-full border px-3 text-xs font-medium transition-colors md:min-h-8',
+                    active
+                      ? 'border-primary bg-primary text-primary-foreground'
+                      : 'text-muted-foreground hover:text-foreground',
+                  )}
+                >
+                  {mixed && item.table.sport
+                    ? m.zones_model_for_sport({
+                        author: item.model.author,
+                        sport:
+                          item.table.sport === 'run'
+                            ? m.zones_model_sport_run()
+                            : m.zones_model_sport_bike(),
+                      })
+                    : item.model.author}
+                </button>
+              );
+            })}
+          </div>
+          {hasSubZones && (
+            <div className="flex flex-wrap gap-1.5" role="group">
+              {(
+                [
+                  [false, m.zones_model_merged()],
+                  [
+                    true,
+                    m.zones_model_original({
+                      count: choice.table.zones.length,
+                    }),
+                  ],
+                ] as const
+              ).map(([value, text]) => (
+                <button
+                  key={String(value)}
+                  type="button"
+                  aria-pressed={original === value}
+                  onClick={() => setOriginal(value)}
+                  className={cn(
+                    'min-h-11 rounded-full border px-3 text-xs font-medium transition-colors md:min-h-8',
+                    original === value
+                      ? 'border-primary bg-primary text-primary-foreground'
+                      : 'text-muted-foreground hover:text-foreground',
+                  )}
+                >
+                  {text}
+                </button>
+              ))}
+            </div>
+          )}
+          {choice && (
+            <p className="text-xs text-muted-foreground">
+              {m.zones_model_source({ source: choice.model.source })}
+            </p>
+          )}
+          {count > 0 && count !== currentCount && (
+            <p role="status" className="text-xs text-oa-warning">
+              {m.zones_model_count_change({
+                from: currentCount,
+                to: count,
+                kept: Math.min(currentCount, count),
+              })}
+            </p>
+          )}
+        </div>
+      )}
       {sources.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
           {sources.map((source) => (
@@ -223,7 +337,7 @@ export function ThresholdZonesPanel({
         <Button type="button" variant="outline" onClick={() => setOpen(false)}>
           {m.cancel()}
         </Button>
-        <Button type="button" disabled={!valid} onClick={apply}>
+        <Button type="button" disabled={!valid || !table} onClick={apply}>
           {m.zones_threshold_apply()}
         </Button>
       </div>

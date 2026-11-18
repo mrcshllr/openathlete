@@ -65,6 +65,8 @@ describe('ThresholdZonesPanel', () => {
         <ThresholdZonesPanel
           athleteId={1}
           type={TRAINING_ZONE_TYPE.POWER}
+          sports={['RUNNING']}
+          currentCount={5}
           onApply={onApply}
         />,
       ),
@@ -88,6 +90,8 @@ describe('ThresholdZonesPanel', () => {
         <ThresholdZonesPanel
           athleteId={1}
           type={TRAINING_ZONE_TYPE.PACE}
+          sports={['RUNNING']}
+          currentCount={5}
           onApply={onApply}
         />,
       ),
@@ -111,6 +115,8 @@ describe('ThresholdZonesPanel', () => {
         <ThresholdZonesPanel
           athleteId={1}
           type={TRAINING_ZONE_TYPE.HEARTRATE}
+          sports={['RUNNING']}
+          currentCount={5}
           onApply={onApply}
         />,
       ),
@@ -118,5 +124,58 @@ describe('ThresholdZonesPanel', () => {
     act(() => button('zones_threshold_open').click());
     expect(button('zones_threshold_apply').disabled).toBe(true);
     expect(container.textContent).toContain('zones_threshold_hr_help');
+  });
+
+  it('offers the running power models, merged into five by default', () => {
+    const onApply = vi.fn();
+    act(() =>
+      root.render(
+        <ThresholdZonesPanel
+          athleteId={1}
+          type={TRAINING_ZONE_TYPE.POWER}
+          sports={['RUNNING']}
+          currentCount={5}
+          onApply={onApply}
+        />,
+      ),
+    );
+    act(() => button('zones_threshold_open').click());
+    expect(button('Steve Palladino')).toBeDefined();
+    expect(button('Jim Vance')).toBeDefined();
+    expect(button('Andrew Coggan')).toBeUndefined();
+    act(() => button('Steve Palladino').click());
+    act(() => button('zones_threshold_source_modeled FTP run 318 W').click());
+    act(() => button('zones_threshold_apply').click());
+    const zones = onApply.mock.calls[0][0];
+    expect(zones).toHaveLength(5);
+    // Zone 5 from 106 % of 318 W
+    expect(zones[4].min).toBe(337);
+  });
+
+  it('keeps the original zones on request, and says the count changes', () => {
+    const onApply = vi.fn();
+    act(() =>
+      root.render(
+        <ThresholdZonesPanel
+          athleteId={1}
+          type={TRAINING_ZONE_TYPE.POWER}
+          sports={['RUNNING']}
+          currentCount={5}
+          onApply={onApply}
+        />,
+      ),
+    );
+    act(() => button('zones_threshold_open').click());
+    act(() => button('Steve Palladino').click());
+    expect(container.textContent).not.toContain('zones_model_count_change');
+    act(() => button('zones_model_original 10').click());
+    expect(container.textContent).toContain('zones_model_count_change 5 10 5');
+    act(() => button('zones_threshold_source_modeled FTP run 318 W').click());
+    act(() => button('zones_threshold_apply').click());
+    const zones = onApply.mock.calls[0][0];
+    expect(zones).toHaveLength(10);
+    expect(zones.map((zone: { name: string }) => zone.name)[1]).toBe(
+      'zones_model_zone_name 1B',
+    );
   });
 });
