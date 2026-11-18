@@ -14,7 +14,9 @@ import { ActivityPipelineContext, ActivityProcessor } from '../types';
  * Bump when the figures below change: activities computed with an older
  * version are recomputed in the background (IntensityBackfillService).
  */
-export const INTENSITY_VERSION = 5;
+// Selfhost: 6, as this instance computed 5 with the first run efficiency
+// figures; main's 5 recomputes them from 4
+export const INTENSITY_VERSION = 6;
 
 /** Reads the recording once, so statistics never have to. */
 @Injectable()
