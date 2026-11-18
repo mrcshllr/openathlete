@@ -30,6 +30,7 @@ import {
   RunningEconomyDto,
   TRAINING_FOCUS_DURATIONS,
   YearBestRecordDto,
+  aerobicThresholdPower,
   median,
   missingTrainingFocusValues,
   modelFtp,
@@ -250,10 +251,7 @@ export class RecordService {
     // Read from the records, never guessed: a value they cannot give leaves
     // the focus unnamed, and says which
     const focusValues = {
-      aerobicThreshold: powerAt(
-        running,
-        TRAINING_FOCUS_DURATIONS.aerobicThreshold,
-      ),
+      aerobicThreshold: aerobicThresholdPower(running),
       lactateThreshold: ftpRunning?.value ?? null,
       vo2max: powerAt(running, TRAINING_FOCUS_DURATIONS.vo2max),
     };
