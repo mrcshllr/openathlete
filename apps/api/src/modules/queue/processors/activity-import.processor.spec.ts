@@ -189,21 +189,20 @@ describe('ActivityImportProcessor', () => {
     expect(strava.importActivity).toHaveBeenCalled();
   });
 
-  it('puts an activity back for later when the provider is out of quota', async () => {
-    const { processor, strava, queue } = setup(true);
+  it('waits for the quota without spending an attempt', async () => {
+    const { processor, strava } = setup(true);
     strava.importActivity.mockRejectedValue(
-      new ProviderRateLimitError('Strava', 120_000),
+      new ProviderRateLimitError('COROS', 3_600_000),
     );
-    const waiting = Object.assign(job(), { moveToDelayed: jest.fn() });
-    const before = Date.now();
-
-    await expect(processor.process(waiting, 'token')).rejects.toBeInstanceOf(
+    const delayed = job();
+    const moveToDelayed = jest.fn().mockResolvedValue(undefined);
+    Object.assign(delayed, { moveToDelayed });
+    await expect(processor.process(delayed, 'token')).rejects.toBeInstanceOf(
       DelayedError,
     );
-
-    const [until, token] = waiting.moveToDelayed.mock.calls[0];
-    expect(until).toBeGreaterThanOrEqual(before + 120_000);
-    expect(token).toBe('token');
-    expect(queue.addActivityProcessingJob).not.toHaveBeenCalled();
+    expect(moveToDelayed).toHaveBeenCalledWith(expect.any(Number), 'token');
+    expect(moveToDelayed.mock.calls[0][0]).toBeGreaterThan(
+      Date.now() + 3_500_000,
+    );
   });
 });

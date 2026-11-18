@@ -58,7 +58,11 @@ import { QueueService } from 'src/modules/queue/queue.service';
 import { CoachActivityNoticeEvent } from '../../../events/coach-activity-notice.event';
 import { ProviderExportService } from '../../providers-sync/export.service';
 import { TrainingLoadEstimationService } from '../../queue/services/training-load-estimation.service';
-import { activityToGpx, garminSourceLabel } from '../helpers/activity-gpx';
+import {
+  activityToGpx,
+  garminSourceLabel,
+  gpxFileName,
+} from '../helpers/activity-gpx';
 import { originalFileName } from '../helpers/activity-original-file';
 import {
   reductActivityStreamToResolution,
@@ -437,7 +441,14 @@ export class EventService {
       select: {
         name: true,
         startDate: true,
-        activity: { select: { sport: true, stream: true, provider: true } },
+        activity: {
+          select: {
+            sport: true,
+            stream: true,
+            provider: true,
+            deviceName: true,
+          },
+        },
       },
     });
     if (!event) {
@@ -454,7 +465,7 @@ export class EventService {
               // Garmin's brand guidelines: its data names it as its source
               source:
                 event.activity.provider === 'GARMIN'
-                  ? garminSourceLabel(null)
+                  ? garminSourceLabel(event.activity.deviceName)
                   : null,
             },
             uncompressActivityStream(compressed),
@@ -463,7 +474,7 @@ export class EventService {
     if (!gpx) {
       throw new NotFoundException('No GPS track for this activity');
     }
-    return { content: gpx, fileName: originalFileName(event, 'GPX') };
+    return { content: gpx, fileName: gpxFileName(event) };
   }
 
   /**

@@ -138,11 +138,12 @@ describe('an activity read on its own (PostgreSQL)', () => {
       expect(gpx.content).not.toContain('<src>');
     });
 
-    it('names Garmin as the source of a Garmin activity', async () => {
+    it('names Garmin and the device as the source of a Garmin activity', async () => {
       await prisma.eventActivity.update({
         where: { eventId: RUN_EVENT_ID },
         data: {
           provider: 'GARMIN',
+          deviceName: 'Forerunner 965',
           stream: {
             time: [0, 1],
             latlng: [
@@ -154,7 +155,7 @@ describe('an activity read on its own (PostgreSQL)', () => {
       });
       const gpx = await events.getEventGpx(athlete, RUN_EVENT_ID);
       expect(gpx.content).toMatch(
-        /<name>Run<\/name>\n\s*<src>Garmin<\/src>\n\s*<type>/,
+        /<name>Run<\/name>\n\s*<src>Garmin Forerunner 965<\/src>\n\s*<type>/,
       );
     });
 

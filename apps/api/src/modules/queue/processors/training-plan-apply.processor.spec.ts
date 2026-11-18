@@ -6,6 +6,12 @@ import { TrainingPlanLibraryService } from '../../core/services/training-plan-li
 import { TrainingPlanApplyJobData } from '../queue.service';
 import { TrainingPlanApplyProcessor } from './training-plan-apply.processor';
 
+// The FIT SDK, loaded through the provider services, is ESM, which Jest
+// cannot load
+jest.mock('../../core/helpers/activity-file-parser.service', () => ({
+  ActivityFileParserService: class {},
+}));
+
 const result = (athleteId: number) => ({
   athleteId,
   trainingPlanId: athleteId * 10,
