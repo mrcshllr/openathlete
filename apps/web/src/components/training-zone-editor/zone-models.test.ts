@@ -15,6 +15,7 @@ describe('zoneModelChoices', () => {
       'arend',
       'palladino-run',
       'vance-run',
+      'stryd-run',
     ]);
   });
 

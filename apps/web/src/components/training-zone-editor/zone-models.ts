@@ -38,7 +38,7 @@ export interface ZoneModelTable {
 }
 
 export interface ZoneModel {
-  id: 'arend' | 'friel' | 'coggan' | 'palladino' | 'vance';
+  id: 'arend' | 'friel' | 'coggan' | 'palladino' | 'vance' | 'stryd';
   author: string;
   source: string;
   tables: ZoneModelTable[];
@@ -202,6 +202,29 @@ export const ZONE_MODELS: ZoneModel[] = [
         sport: 'run',
         zones: [...FIVE, z('6', 'anaerobic', 4), z('7', 'neuromuscular', 4)],
         starts: [0, 0.81, 0.89, 0.96, 1.06, 1.16, 1.29],
+      },
+    ],
+  },
+  {
+    id: 'stryd',
+    author: 'Stryd',
+    source:
+      'Stryd PowerCenter zones, as listed in Palladino Power Project, Running Power Zones 2017',
+    tables: [
+      {
+        // Easy 65-80 %, Moderate 80-90, Threshold 90-100, Interval 100-115,
+        // Repetition 115-130 % of critical power: five zones, nothing to
+        // merge. Below 65 % counts as easy
+        type: TRAINING_ZONE_TYPE.POWER,
+        sport: 'run',
+        zones: [
+          z('1', 'endurance', 0),
+          z('2', 'tempo', 1),
+          z('3', 'threshold', 2),
+          z('4', 'vo2max', 3),
+          z('5', 'anaerobic', 4),
+        ],
+        starts: [0, 0.8, 0.9, 1, 1.15],
       },
     ],
   },

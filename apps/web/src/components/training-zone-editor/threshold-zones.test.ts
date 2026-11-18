@@ -111,6 +111,31 @@ describe('thresholdZones', () => {
     ]);
   });
 
+  it("gives Stryd's five zones of critical power", () => {
+    const zones = thresholdZones(
+      TRAINING_ZONE_TYPE.POWER,
+      300,
+      table('stryd', TRAINING_ZONE_TYPE.POWER, 'run'),
+      label,
+    )!;
+    // Easy up to 80 %, Moderate 80-90, Threshold 90-100, Interval 100-115,
+    // Repetition from 115 %
+    expect(limits(zones)).toEqual([
+      [0, 239],
+      [240, 269],
+      [270, 299],
+      [300, 344],
+      [345, 450],
+    ]);
+    expect(zones.map((zone) => zone.description)).toEqual([
+      'endurance',
+      'tempo',
+      'threshold',
+      'vo2max',
+      'anaerobic',
+    ]);
+  });
+
   it('turns a threshold pace into pace zones, slowest first', () => {
     // 4:10/km by Arend
     const arend = thresholdZones(
