@@ -2786,8 +2786,6 @@
   "zones_threshold_apply": "Calcola le zone",
   "records_vertical_speed": "Velocità di salita",
   "records_last_days": "Ultimi {days} giorni",
-  "records_threshold_vam": "VAM di soglia {value} m/h: {percent}% dei migliori {minutes} min degli ultimi {days} giorni.",
-  "records_threshold_vam_help": "Come un FTP per la salita: il più alto tra la migliore ora e il 95% dei migliori 20 minuti.",
   "statistics_run_efficiency": "Efficienza di corsa",
   "metric_run_efficiency_what": "Fattore di efficienza (Friel): metri corretti per la pendenza per battito. Potenza per battito: potenza media su frequenza cardiaca media. Running effectiveness (Coggan): velocità in m/s per W/kg sui tratti piani, vicina a 1 kg/N nella maggior parte dei corridori allenati. Disaccoppiamento: quanto cala l'efficienza dalla prima metà alla seconda. Un'efficienza che sale su corse simili significa di più con lo stesso sforzo.",
   "metric_run_efficiency_limits": "Confronta corse regolari tra loro: quelle più dure danno da sole valori più alti. Caldo e fatica spostano la frequenza cardiaca, e la potenza dipende dal dispositivo (Stryd e Garmin differiscono): confronta corse misurate con lo stesso. Le discese sono escluse da entrambi i lati di ogni rapporto.",
