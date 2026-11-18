@@ -144,9 +144,8 @@ export class EventService {
             | 'intensitySeconds'
             | 'efficiencyFactor'
             | 'decouplingPercent'
-            | 'biomechanicalEfficiency'
-            | 'metabolicEfficiency'
-            | 'totalEfficiency'
+            | 'flatSpeedPerWatt'
+            | 'powerEfficiencyFactor'
             | 'originalStream'
             | 'originalSummary'
           > & {
@@ -1845,9 +1844,8 @@ export class EventService {
         | 'intensitySeconds'
         | 'efficiencyFactor'
         | 'decouplingPercent'
-        | 'biomechanicalEfficiency'
-        | 'metabolicEfficiency'
-        | 'totalEfficiency'
+        | 'flatSpeedPerWatt'
+        | 'powerEfficiencyFactor'
         | 'originalStream'
         | 'originalSummary'
       > | null;
