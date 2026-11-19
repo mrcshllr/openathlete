@@ -411,7 +411,7 @@ export const computeRecords = (
   stream: ActivityStream,
   sport?: string,
 ): ComputedRecord[] => {
-  const { time, latlng, altitude, heartrate, watts } = stream;
+  const { time, latlng, altitude, heartrate, watts, distance } = stream;
   if (!time || time.length === 0) return [];
 
   const records = [
