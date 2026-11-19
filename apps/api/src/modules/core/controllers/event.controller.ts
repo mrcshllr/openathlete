@@ -630,10 +630,11 @@ export class EventController {
   @UseGuards(AuthGuard('jwt'), UserTypeGuard)
   @ApiBearerAuth()
   @Get(':eventId/original-file')
+  @Throttle(RATE_LIMITS.activityFile)
   @ApiOperation({
     summary: 'Download the original file of an activity',
     description:
-      'The device file (FIT) an activity was imported from, as the provider served it. Kept for the activities imported from Suunto since this was added; the event carries `originalFile` when there is one. Uses CASL authorization to verify that the user has read access to the event.',
+      'The device file (FIT) an activity was imported from, as the provider served it. Kept for the activities imported from Suunto since this was added; the event carries `originalFile` when there is one. The athlete and their coaches can download it. Limited to 30 files a minute, like the GPX track. Uses CASL authorization to verify that the user has read access to the event.',
   })
   @ApiParam({
     name: 'eventId',

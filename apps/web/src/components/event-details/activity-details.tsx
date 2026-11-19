@@ -11,12 +11,12 @@ import { ActivityEvent } from '@openathlete/shared';
 
 import { ActivityFeedbackOverlay } from '../activity-feedback/activity-feedback-overlay';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
+import { ActivityDownloadMenu } from './activity-download-menu';
 import { ActivityNormalizationCard } from './activity-normalization-card';
 import {
   ACTIVITY_STREAM_KEYS,
   ACTIVITY_STREAM_RESOLUTION,
 } from './activity-stream-keys';
-import { GpxDownloadButton } from './gpx-download-button';
 import { ActivityDetailsOverviewTab } from './tabs/activity-details-overview-tab';
 import { ActivityDetailsWeatherTab } from './tabs/activity-details-weather-tab';
 
@@ -67,7 +67,7 @@ export function ActivityDetails({ event }: P) {
                 </TabsTrigger>
               </TabsList>
             )}
-            <GpxDownloadButton event={event} className="ml-auto shrink-0" />
+            <ActivityDownloadMenu event={event} className="ml-auto shrink-0" />
           </div>
           <TabsContent value="overview">
             <ActivityDetailsOverviewTab

@@ -1,34 +1,17 @@
-import { EventAPI } from '@/api/event/event.api';
 import { m } from '@/paraglide/messages';
-import { isCapacitor } from '@/utils/capacitor';
 import { getConnectorProviderActivityLink } from '@/utils/connector-provider';
-import { downloadFile } from '@/utils/csv';
 import {
   connectorProviderLabelMap,
   eventTypeLabelMap,
 } from '@/utils/label-map/core';
 import { cn } from '@/utils/shadcn';
-import { Download, Trophy } from 'lucide-react';
-import { toast } from 'sonner';
+import { Trophy } from 'lucide-react';
 
-import { ActivityEvent, EVENT_TYPE, Event } from '@openathlete/shared';
+import { EVENT_TYPE, Event } from '@openathlete/shared';
 
 import { garminActivityLabel } from '../garmin-attribution/garmin-source';
 import { SportIcon } from '../sport-icon/sport-icon';
 import { Badge } from '../ui/badge';
-import { originalFileName } from './original-file-name';
-
-/** Saves the activity's device file under its date and name */
-async function downloadOriginalFile(event: ActivityEvent) {
-  try {
-    downloadFile(
-      originalFileName(event),
-      await EventAPI.getEventOriginalFile(event.eventId),
-    );
-  } catch {
-    toast.error(m.activity_original_file_failed());
-  }
-}
 
 /** The sport, name and badges of an event, as its dialog and page title */
 export function EventHeading({
@@ -100,21 +83,6 @@ export function EventHeading({
           </Badge>
         )
       )}
-      {/* Not in the native apps: their web view has no download folder */}
-      {event.type === EVENT_TYPE.ACTIVITY &&
-        event.originalFile &&
-        !isCapacitor() && (
-          <Badge asChild variant="outline" className="text-xs">
-            <button
-              type="button"
-              className="cursor-pointer hover:underline"
-              onClick={() => downloadOriginalFile(event)}
-            >
-              <Download className="h-3 w-3" />
-              {m.activity_original_file_download()}
-            </button>
-          </Badge>
-        )}
     </div>
   );
 }
