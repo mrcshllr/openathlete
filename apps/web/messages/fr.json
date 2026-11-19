@@ -2034,7 +2034,7 @@
   "activity_gpx_download": "Télécharger le tracé GPX",
   "activity_gpx_download_failed": "Le tracé n'a pas pu être téléchargé",
   "activity_download": "Télécharger",
-  "activity_download_fit": "Fichier FIT (de la montre)",
+  "activity_download_fit": "Fichier FIT",
   "activity_download_fit_missing": "Non conservé pour cette activité",
   "activity_download_gpx": "Trace GPX",
   "activity_download_gpx_missing": "Pas de trace GPS",

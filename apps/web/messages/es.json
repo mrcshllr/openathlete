@@ -2034,7 +2034,7 @@
   "activity_gpx_download": "Descargar el track GPX",
   "activity_gpx_download_failed": "No se pudo descargar el track",
   "activity_download": "Descargar",
-  "activity_download_fit": "Archivo FIT (del reloj)",
+  "activity_download_fit": "Archivo FIT",
   "activity_download_fit_missing": "No guardado para esta actividad",
   "activity_download_gpx": "Track GPX",
   "activity_download_gpx_missing": "Sin track GPS",

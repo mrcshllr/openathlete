@@ -2034,7 +2034,7 @@
   "activity_gpx_download": "Baixar o trajeto GPX",
   "activity_gpx_download_failed": "Não foi possível baixar o trajeto",
   "activity_download": "Baixar",
-  "activity_download_fit": "Arquivo FIT (do relógio)",
+  "activity_download_fit": "Arquivo FIT",
   "activity_download_fit_missing": "Não guardado para esta atividade",
   "activity_download_gpx": "Trilha GPX",
   "activity_download_gpx_missing": "Sem trilha GPS",
