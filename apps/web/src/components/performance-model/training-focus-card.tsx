@@ -290,44 +290,46 @@ function Missing({
 
   const unreliable = slot.model && !slot.model.reliable;
   return (
-    <div className="space-y-3" data-focus-missing>
-      <div className="space-y-1">
-        <div className="text-base font-semibold">
-          {slot.missing.length === 2
-            ? m.performance_missing_title_both()
-            : short
-              ? m.performance_missing_title_short()
-              : m.performance_missing_title_long()}
+    <div className="grid gap-4 md:grid-cols-2" data-focus-missing>
+      <div className="space-y-3">
+        <div className="space-y-1">
+          <div className="text-base font-semibold">
+            {slot.missing.length === 2
+              ? m.performance_missing_title_both()
+              : short
+                ? m.performance_missing_title_short()
+                : m.performance_missing_title_long()}
+          </div>
+          <p className="text-sm text-muted-foreground">
+            {unreliable
+              ? m.performance_unreliable_text()
+              : m.performance_missing_text({ days: data.days })}
+          </p>
         </div>
-        <p className="text-sm text-muted-foreground">
-          {unreliable
-            ? m.performance_unreliable_text()
-            : m.performance_missing_text({ days: data.days })}
-        </p>
+        <div className="border-t">
+          <Bucket
+            label={m.performance_bucket_long()}
+            slot={slot}
+            short={false}
+            now={now}
+          />
+          <Bucket
+            label={m.performance_bucket_short()}
+            slot={slot}
+            short
+            now={now}
+          />
+        </div>
+        {slot.model && (
+          <p className="text-sm text-muted-foreground">
+            {m.performance_provisional({
+              name: m.performance_critical_pace(),
+              value: formatCritical('pace', slot.model.critical),
+            })}
+          </p>
+        )}
       </div>
-      <div className="border-t">
-        <Bucket
-          label={m.performance_bucket_long()}
-          slot={slot}
-          short={false}
-          now={now}
-        />
-        <Bucket
-          label={m.performance_bucket_short()}
-          slot={slot}
-          short
-          now={now}
-        />
-      </div>
-      {slot.model && (
-        <p className="text-sm text-muted-foreground">
-          {m.performance_provisional({
-            name: m.performance_critical_pace(),
-            value: formatCritical('pace', slot.model.critical),
-          })}
-        </p>
-      )}
-      <div className="space-y-2 rounded-md bg-muted p-3">
+      <div className="space-y-2 self-start rounded-md bg-muted p-3">
         <div className="text-sm font-medium">
           {short
             ? m.performance_test_short_title()
@@ -355,6 +357,7 @@ function Missing({
  * grade-adjusted bests of the last weeks. The switch shows the model on
  * pace or on power. When the bests give no model, or the short ones were
  * not all out, it says which is missing and offers the test that fills it.
+ * It spans the width of its block: two columns where there is room.
  */
 export function TrainingFocusCard({ athleteId }: { athleteId?: number }) {
   const { data, isLoading } = useGetPerformanceModelsQuery(athleteId);
@@ -377,22 +380,24 @@ export function TrainingFocusCard({ athleteId }: { athleteId?: number }) {
         {focus && <MeasureSwitch measure={measure} onChange={setChosen} />}
       </div>
       {focus && profile ? (
-        <>
-          <div className="space-y-1">
-            <div className="text-xl font-semibold" data-focus={focus}>
-              {focusLabel[focus]()}
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <div className="text-xl font-semibold" data-focus={focus}>
+                {focusLabel[focus]()}
+              </div>
+              <p className="text-sm text-muted-foreground">
+                {focusReason[focus]()}
+              </p>
             </div>
-            <p className="text-sm text-muted-foreground">
-              {focusReason[focus]()}
-            </p>
+            <Profile profile={profile} />
           </div>
-          <Profile profile={profile} />
           <Rows
             data={data}
             measure={measure}
             model={data.running[measure].model}
           />
-        </>
+        </div>
       ) : (
         <Missing data={data} athleteId={athleteId} />
       )}
