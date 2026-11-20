@@ -6,7 +6,15 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import { m } from '@/paraglide/messages';
+import { RECORD_EXCLUSIONS_COLLAPSED } from '@/utils/local-storage';
+import { ChevronDown } from 'lucide-react';
+import { useState } from 'react';
 
 import {
   RecordEffortDto,
@@ -102,48 +110,91 @@ interface ExclusionsP {
   onRestore: (exclusion: RecordExclusionDto) => void;
 }
 
-/** Everything set aside, to get it back at any time. */
+/** Whether the athlete folded the exclusions away on this device. */
+function readCollapsed(): boolean {
+  try {
+    return localStorage.getItem(RECORD_EXCLUSIONS_COLLAPSED) === 'true';
+  } catch {
+    // No storage (private mode): the card opens as it always did
+    return false;
+  }
+}
+
+/**
+ * Everything set aside, to get it back at any time. The list folds away: a
+ * long one pushes the rest of the column down, and it is rarely needed.
+ */
 export function RecordExclusionsCard({
   exclusions,
   sport,
   dateFormat,
   onRestore,
 }: ExclusionsP) {
+  const [collapsed, setCollapsed] = useState(readCollapsed);
+  const toggle = (open: boolean) => {
+    setCollapsed(!open);
+    try {
+      localStorage.setItem(RECORD_EXCLUSIONS_COLLAPSED, String(!open));
+    } catch {
+      // Not remembered, still folded for this visit
+    }
+  };
+
+  if (exclusions.length === 0) {
+    return (
+      <Card data-record-exclusions>
+        <CardHeader>
+          <CardTitle>{m.records_exclusions()}</CardTitle>
+          <CardDescription>{m.records_exclusions_empty()}</CardDescription>
+        </CardHeader>
+      </Card>
+    );
+  }
+
   return (
     <Card data-record-exclusions>
-      <CardHeader>
-        <CardTitle>{m.records_exclusions()}</CardTitle>
-        {exclusions.length === 0 && (
-          <CardDescription>{m.records_exclusions_empty()}</CardDescription>
-        )}
-      </CardHeader>
-      {exclusions.length > 0 && (
-        <CardContent className="flex flex-col">
-          {exclusions.map((exclusion) => (
-            <div
-              key={exclusion.recordExclusionId}
-              className="flex items-center justify-between gap-2 border-b py-2 last:border-0"
-            >
-              <span className="min-w-0 text-sm">
-                <span className="block truncate font-medium">
-                  {exclusion.activityName}
-                </span>
-                <span className="block truncate text-xs text-muted-foreground">
-                  {exclusionScope(exclusion, sport)} ·{' '}
-                  {dateFormat.format(new Date(exclusion.date))}
+      <Collapsible open={!collapsed} onOpenChange={toggle}>
+        <CardHeader>
+          <CardTitle>
+            <CollapsibleTrigger className="group flex min-h-11 w-full cursor-pointer items-center justify-between gap-2 text-left">
+              <span>
+                {m.records_exclusions()}{' '}
+                <span className="text-sm font-normal text-muted-foreground tabular-nums">
+                  {exclusions.length}
                 </span>
               </span>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => onRestore(exclusion)}
+              <ChevronDown className="size-4 shrink-0 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+            </CollapsibleTrigger>
+          </CardTitle>
+        </CardHeader>
+        <CollapsibleContent>
+          <CardContent className="flex flex-col">
+            {exclusions.map((exclusion) => (
+              <div
+                key={exclusion.recordExclusionId}
+                className="flex items-center justify-between gap-2 border-b py-2 last:border-0"
               >
-                {m.records_restore()}
-              </Button>
-            </div>
-          ))}
-        </CardContent>
-      )}
+                <span className="min-w-0 text-sm">
+                  <span className="block truncate font-medium">
+                    {exclusion.activityName}
+                  </span>
+                  <span className="block truncate text-xs text-muted-foreground">
+                    {exclusionScope(exclusion, sport)} ·{' '}
+                    {dateFormat.format(new Date(exclusion.date))}
+                  </span>
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => onRestore(exclusion)}
+                >
+                  {m.records_restore()}
+                </Button>
+              </div>
+            ))}
+          </CardContent>
+        </CollapsibleContent>
+      </Collapsible>
     </Card>
   );
 }

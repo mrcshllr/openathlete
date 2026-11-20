@@ -4,6 +4,8 @@ export const SIDEBAR_OPEN_STATES = 'sidebar_open_states';
 export const CURRENT_SPACE = 'current_space';
 export const MOBILE_SERVER_URL = 'openathlete_mobile_server_url';
 export const PUSH_PROMPT_DISMISSED = 'openathlete_push_prompt_dismissed';
+export const RECORD_EXCLUSIONS_COLLAPSED =
+  'openathlete_record_exclusions_collapsed';
 
 export const getItem = (key: string) => localStorage.getItem(key);
 export const setItem = (key: string, value: string) =>
