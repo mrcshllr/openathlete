@@ -8,15 +8,9 @@ import { getLocale } from '@/paraglide/runtime';
 import { metricTypeLabelMap } from '@/utils/label-map/core/metric-type.label-map';
 import { getDateLocale } from '@/utils/locales';
 
-import {
-  METRIC_TYPE,
-  ModeledFtpDto,
-  TRAINING_FOCUS_RATIOS,
-  TrainingFocus,
-  TrainingFocusDto,
-  TrainingFocusValue,
-  TrainingWeakness,
-} from '@openathlete/shared';
+import { METRIC_TYPE, ModeledFtpDto } from '@openathlete/shared';
+
+import { TrainingFocusCard } from '../performance-model/training-focus-card';
 
 const formatDay = (date: Date) =>
   date.toLocaleDateString(getDateLocale(getLocale()), {
@@ -62,99 +56,6 @@ function ModeledFtpTile({
   );
 }
 
-const focusLabel: Record<TrainingFocus, () => string> = {
-  AEROBIC_BASE: m.training_focus_aerobic_base,
-  VO2MAX_THEN_THRESHOLD: m.training_focus_vo2max_then_threshold,
-  VO2MAX: m.training_focus_vo2max,
-  THRESHOLD: m.training_focus_threshold,
-};
-
-const weaknessLabel: Record<TrainingWeakness, () => string> = {
-  AEROBIC: m.training_weakness_aerobic,
-  THRESHOLD: m.training_weakness_threshold,
-  VO2MAX: m.training_weakness_vo2max,
-};
-
-const valueLabel: Record<TrainingFocusValue, () => string> = {
-  AEROBIC_THRESHOLD: m.training_focus_value_aerobic,
-  LACTATE_THRESHOLD: m.training_focus_value_threshold,
-  VO2MAX: m.training_focus_value_vo2max,
-};
-
-function TrainingFocusTile({
-  focus,
-  missing,
-  days,
-}: {
-  focus: TrainingFocusDto | null;
-  missing: TrainingFocusValue[];
-  days: number;
-}) {
-  const label = m.modeled_training_focus();
-  if (!focus) {
-    if (missing.length === 0) return <MetricTile label={label} value="–" />;
-    return (
-      <div
-        title={m.modeled_training_focus_missing_title({
-          values: missing.map((value) => valueLabel[value]()).join(', '),
-          days,
-        })}
-      >
-        <MetricTile
-          label={label}
-          value="–"
-          caption={m.modeled_training_focus_missing()}
-        />
-      </div>
-    );
-  }
-  const percent = new Intl.NumberFormat(getLocale(), {
-    maximumFractionDigits: 1,
-  });
-  const share = (value: number) => percent.format(value * 100);
-  const { ratios } = focus;
-  const title = [
-    m.modeled_training_focus_title({
-      aerobic: focus.aerobicThreshold,
-      threshold: focus.lactateThreshold,
-      vo2max: focus.vo2max,
-      days,
-      r1: share(ratios.aerobicToVo2max),
-      r2: share(ratios.aerobicToThreshold),
-      r3: share(ratios.thresholdToVo2max),
-      a1: share(TRAINING_FOCUS_RATIOS.aerobicToVo2max.average),
-      a2: share(TRAINING_FOCUS_RATIOS.aerobicToThreshold.average),
-      a3: share(TRAINING_FOCUS_RATIOS.thresholdToVo2max.average),
-    }),
-    focus.weaknesses.length > 0
-      ? m.modeled_training_focus_weak({
-          systems: focus.weaknesses.map((w) => weaknessLabel[w]()).join(', '),
-        })
-      : null,
-  ]
-    .filter(Boolean)
-    .join(' ');
-  return (
-    <div title={title}>
-      <MetricTile
-        label={label}
-        // Words, not a number: smaller to fit the tile
-        value={focusLabel[focus.focus]()}
-        valueClassName="text-sm leading-6"
-        caption={
-          focus.weaknesses.length > 0
-            ? m.modeled_training_focus_caption_weak({
-                systems: focus.weaknesses
-                  .map((w) => weaknessLabel[w]())
-                  .join(', '),
-              })
-            : m.modeled_training_focus_caption_none()
-        }
-      />
-    </div>
-  );
-}
-
 /** FTP modelled from the best power of the last days, next to the load. */
 export function ModeledMetrics({ athleteId }: { athleteId?: number }) {
   const { data, isLoading } = useGetModeledMetricsQuery(athleteId);
@@ -168,14 +69,13 @@ export function ModeledMetrics({ athleteId }: { athleteId?: number }) {
             <Skeleton key={i} className="h-16 rounded-md" />
           ))}
         </div>
-      ) : !data ||
-        (!data.ftpRunning && !data.ftpCycling && !data.trainingFocusRunning) ? (
+      ) : !data || (!data.ftpRunning && !data.ftpCycling) ? (
         <p className="text-xs text-muted-foreground">
           {m.dashboard_header_no_modeled_metrics({ days: data?.days ?? 90 })}
         </p>
       ) : (
         <>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 gap-2">
             <ModeledFtpTile
               type={METRIC_TYPE.FTP_RUNNING}
               ftp={data.ftpRunning}
@@ -186,16 +86,13 @@ export function ModeledMetrics({ athleteId }: { athleteId?: number }) {
               ftp={data.ftpCycling}
               days={data.days}
             />
-            <TrainingFocusTile
-              focus={data.trainingFocusRunning}
-              missing={data.trainingFocusRunningMissing}
-              days={data.days}
-            />
           </div>
           {/* Derived from activity power, which Garmin devices may record */}
           <GarminAttribution athleteId={athleteId} />
         </>
       )}
+      {/* Selfhost: its own request, and its own word on what is missing */}
+      <TrainingFocusCard athleteId={athleteId} />
     </div>
   );
 }

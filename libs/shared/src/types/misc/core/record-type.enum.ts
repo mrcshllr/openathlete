@@ -7,4 +7,5 @@ export enum RECORD_TYPE {
   CADENCE = 'CADENCE',
   /** Metres climbed per hour (VAM), by duration */
   VERTICAL_SPEED = 'VERTICAL_SPEED',
+  GAP_SPEED = 'GAP_SPEED',
 }

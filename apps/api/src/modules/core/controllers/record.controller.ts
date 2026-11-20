@@ -118,7 +118,7 @@ export class RecordController {
   @ApiOperation({
     summary: 'Metrics modelled from recent activities',
     description:
-      'FTP for running and cycling, modelled from the best power of the last 90 days: the higher of the best hour and 95% of the best 20 minutes. Each value says which effort it comes from; null when no running or cycling activity of the period has 20 minutes of power. For running, trainingFocusRunning compares the aerobic threshold (power over 70 minutes), the lactate threshold (that FTP) and VO2max (power over 3 minutes), read between the nearest records, to the averages of runners, and names the system to train; null without records on both sides of 3 and 70 minutes. Nothing is stored: the athlete decides whether to log a value as a metric.',
+      'FTP for running and cycling, modelled from the best power of the last 90 days: the higher of the best hour and 95% of the best 20 minutes. Each value says which effort it comes from; null when no running or cycling activity of the period has 20 minutes of power. Nothing is stored: the athlete decides whether to log a value as a metric.',
   })
   @ApiQuery({
     name: 'athleteId',
@@ -139,6 +139,30 @@ export class RecordController {
     athleteId?: Athlete['athleteId'],
   ) {
     return this.recordService.getModeledMetrics(user, athleteId);
+  }
+
+  @Get('performance-models')
+  @ApiOperation({
+    summary: 'Critical power and critical speed models, and the training focus',
+    description:
+      "Selfhost. For running on grade-adjusted pace and on power, and for cycling on power: the critical value (CS in m/s, CP in watts) and the reserve above it (D' in metres, W' in joules), fitted to the bests of 2, 5, 10 and 20 minutes of the last 90 days (Monod & Scherrer 1965; Smyth & Muniz-Pumares 2020). Each slot lists the bests it found and which end of the range is missing; a model whose reserve is too small to believe is marked unreliable. Running adds the durability (median heart rate drift of steady runs of an hour or more), race predictions and the speed a marathon should not start above. The profile and the focus rest on limits that are assumptions of this instance. Nothing is stored.",
+  })
+  @ApiQuery({
+    name: 'athleteId',
+    type: Number,
+    description:
+      "Optional athlete ID. If not provided, uses authenticated user's athlete.",
+    required: false,
+  })
+  @ApiResponse({ status: 200, description: 'The models of the athlete' })
+  @ApiResponse({ status: 403, description: 'Not allowed to read the athlete' })
+  @ApiResponse({ status: 404, description: 'Athlete not found' })
+  getPerformanceModels(
+    @JwtUser() user: AuthUser,
+    @Query('athleteId', new ParseIntPipe({ optional: true }))
+    athleteId?: Athlete['athleteId'],
+  ) {
+    return this.recordService.getPerformanceModels(user, athleteId);
   }
 
   @UseGuards(AuthGuard('jwt'), UserTypeGuard)

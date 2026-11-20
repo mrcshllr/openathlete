@@ -225,60 +225,101 @@ describe('RecordService (PostgreSQL)', () => {
       expect(modeled.ftpCycling).toMatchObject({ value: 250, duration: 3600 });
     });
 
-    it('names the system to train from the running power profile', async () => {
-      // 3 and 70 minutes read between records on a log time axis
-      for (const [duration, value] of [
-        [120, 346],
-        [300, 342],
-        [1200, 335],
-        [3600, 278],
-        [7200, 240],
-      ])
-        await power(3501, duration, value);
+    describe('performance models', () => {
+      const gap = (duration: number, value: number) =>
+        prisma.record.create({
+          data: {
+            type: 'GAP_SPEED',
+            duration,
+            value,
+            date: new Date('2026-11-01'),
+            athleteId: DELETED_ATHLETE_ID,
+            eventActivityId: 3501,
+          },
+        });
 
-      const modeled = await service.getModeledMetrics(athlete, undefined, now);
-      expect(modeled.trainingFocusRunningMissing).toEqual([]);
-      expect(modeled.trainingFocusRunning).toMatchObject({
-        aerobicThreshold: 270,
-        lactateThreshold: 318,
-        vo2max: 344,
-        // 84.8% of the threshold: the base holds, VO2max lags
-        weaknesses: ['VO2MAX'],
-        focus: 'VO2MAX',
+      it('fits critical speed and critical power to the bests of 2 to 20 minutes', async () => {
+        // On the lines D = 240 + 4 t and W = 18000 + 300 t
+        for (const t of [120, 300, 600, 1200]) {
+          await gap(t, 4 + 240 / t);
+          await power(3501, t, 300 + 18000 / t);
+        }
+
+        const models = await service.getPerformanceModels(
+          athlete,
+          undefined,
+          now,
+        );
+
+        expect(models.running.pace.model).toMatchObject({
+          reliable: true,
+          profile: 'HYBRID',
+          focus: 'BALANCED',
+        });
+        expect(models.running.pace.model?.critical).toBeCloseTo(4, 6);
+        expect(models.running.pace.model?.reserve).toBeCloseTo(240, 4);
+        expect(models.running.pace.missing).toEqual([]);
+        expect(models.running.power.model?.critical).toBeCloseTo(300, 6);
+        expect(models.running.power.model?.reserve).toBeCloseTo(18000, 2);
+        // 5 km in (5000 - 240) / 4 s, the marathon by Riegel from there
+        expect(models.running.predictions[0]).toEqual({
+          distance: 5000,
+          seconds: expect.closeTo(1190, 4),
+        });
+        expect(models.running.marathonStartSpeed).toBeCloseTo(3.76, 6);
+        // No ride, no steady run of an hour
+        expect(models.cycling.power).toEqual({
+          model: null,
+          points: [],
+          missing: ['SHORT', 'LONG'],
+        });
+        expect(models.running.durability).toBeNull();
       });
-    });
 
-    it('carries the hour on when the long record is no maximal effort', async () => {
-      for (const [duration, value] of [
-        [120, 346],
-        [300, 342],
-        [1200, 335],
-        [3600, 278],
-        // A mountain tour, 69% of the hour
-        [7200, 193],
-      ])
-        await power(3501, duration, value);
+      it('says which end of the range is missing, and doubts a flat line', async () => {
+        await gap(600, 4.05);
+        await gap(1200, 4);
+        // Short bests that were not all out: almost no reserve
+        for (const t of [120, 300, 600, 1200])
+          await power(3501, t, 300 + 600 / t);
 
-      const modeled = await service.getModeledMetrics(athlete, undefined, now);
-      expect(modeled.trainingFocusRunningMissing).toEqual([]);
-      // 278 W carried on to 70 minutes by Riegel's curve: 275 W
-      expect(modeled.trainingFocusRunning).toMatchObject({
-        aerobicThreshold: 275,
-        lactateThreshold: 318,
+        const { running } = await service.getPerformanceModels(
+          athlete,
+          undefined,
+          now,
+        );
+
+        expect(running.pace.model).toBeNull();
+        expect(running.pace.missing).toEqual(['SHORT']);
+        expect(running.pace.points).toHaveLength(2);
+        expect(running.power.model?.reliable).toBe(false);
+        expect(running.power.missing).toEqual(['SHORT']);
       });
-    });
 
-    it('names nothing without the records around 3 and 70 minutes', async () => {
-      await power(3501, 300, 342);
-      await power(3501, 1200, 335);
-      await power(3501, 1800, 300);
-      const modeled = await service.getModeledMetrics(athlete, undefined, now);
-      expect(modeled.ftpRunning?.value).toBe(318);
-      expect(modeled.trainingFocusRunning).toBeNull();
-      expect(modeled.trainingFocusRunningMissing).toEqual([
-        'AEROBIC_THRESHOLD',
-        'VO2MAX',
-      ]);
+      it('puts long runs first when heart rate drifts on steady runs', async () => {
+        for (const t of [120, 300, 600, 1200]) await gap(t, 4 + 240 / t);
+        await prisma.eventActivity.update({
+          where: { eventActivityId: 3501 },
+          data: {
+            movingTime: 5400,
+            decouplingPercent: 8,
+            intensitySeconds: [5000, 300, 100],
+          },
+        });
+        await prisma.event.update({
+          where: { eventId: 3002 },
+          data: { startDate: new Date('2026-11-01') },
+        });
+
+        const { running } = await service.getPerformanceModels(
+          athlete,
+          undefined,
+          now,
+        );
+
+        expect(running.durability).toEqual({ value: 8, activities: 1 });
+        expect(running.pace.model?.focus).toBe('LONG_RUNS');
+      });
     });
 
     it('leaves out an excluded effort', async () => {

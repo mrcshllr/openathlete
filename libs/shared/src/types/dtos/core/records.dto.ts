@@ -1,5 +1,9 @@
 import z from 'zod';
 
+import {
+  ATHLETE_PROFILE,
+  TRAINING_FOCUS,
+} from '../../../utils/performance-model';
 import { RECORD_TYPE } from '../../misc/core/record-type.enum';
 import { SPORT_TYPE } from '../../misc/core/sport-type.enum';
 
@@ -134,47 +138,83 @@ export const modeledFtpSchema = z.object({
 
 export type ModeledFtpDto = z.infer<typeof modeledFtpSchema>;
 
-/** The system a training block should work on */
-export const TRAINING_FOCUS = [
-  'AEROBIC_BASE',
-  'VO2MAX_THEN_THRESHOLD',
-  'VO2MAX',
-  'THRESHOLD',
-] as const;
-export type TrainingFocus = (typeof TRAINING_FOCUS)[number];
-
-/** A system a ratio shows as clearly weak */
-export const TRAINING_WEAKNESS = ['AEROBIC', 'THRESHOLD', 'VO2MAX'] as const;
-export type TrainingWeakness = (typeof TRAINING_WEAKNESS)[number];
-
-/** A value of the test the power records give */
-export const TRAINING_FOCUS_VALUE = [
-  'AEROBIC_THRESHOLD',
-  'LACTATE_THRESHOLD',
-  'VO2MAX',
-] as const;
-export type TrainingFocusValue = (typeof TRAINING_FOCUS_VALUE)[number];
-
-/**
- * Where an athlete's running power profile is weak, from the aerobic
- * threshold (70 minutes), the lactate threshold (FTP) and VO2max (3 minutes).
- */
-export const trainingFocusSchema = z.object({
-  /** Watts */
-  aerobicThreshold: z.number(),
-  lactateThreshold: z.number(),
-  vo2max: z.number(),
-  /** Shares, 0.7552 for 75.52% */
-  ratios: z.object({
-    aerobicToVo2max: z.number(),
-    aerobicToThreshold: z.number(),
-    thresholdToVo2max: z.number(),
-  }),
-  weaknesses: z.array(z.enum(TRAINING_WEAKNESS)),
-  focus: z.enum(TRAINING_FOCUS),
+/** A best effort a performance model is read from */
+export const modelPointSchema = z.object({
+  /** Seconds */
+  duration: z.number(),
+  /** Watts, or grade-adjusted metres per second */
+  value: z.number(),
+  date: z.coerce.date(),
+  eventId: z.number().nullable(),
+  activityName: z.string().nullable(),
 });
 
-export type TrainingFocusDto = z.infer<typeof trainingFocusSchema>;
+export type ModelPointDto = z.infer<typeof modelPointSchema>;
+
+/**
+ * The critical power model of one sport on one measure (power, or
+ * grade-adjusted pace), and what it suggests to train.
+ */
+export const performanceModelSchema = z.object({
+  /** CP in watts, or CS in metres per second */
+  critical: z.number(),
+  /** W' in joules, or D' in metres */
+  reserve: z.number(),
+  /** Seconds the reserve lasts at twice the critical value */
+  reserveSeconds: z.number(),
+  /**
+   * False when the reserve is too small to believe: the short bests were
+   * not all out, so the profile and the focus are not to be shown
+   */
+  reliable: z.boolean(),
+  profile: z.enum(ATHLETE_PROFILE),
+  /** 0 at the endurance end of the scale, 1 at the speed end */
+  profilePosition: z.number(),
+  focus: z.enum(TRAINING_FOCUS),
+  /** The bests the model was fitted to */
+  points: z.array(modelPointSchema),
+});
+
+export type PerformanceModelDto = z.infer<typeof performanceModelSchema>;
+
+/** A measure the bests could not give a model for, and which end is missing */
+export const performanceModelSlotSchema = z.object({
+  model: performanceModelSchema.nullable(),
+  /** The bests found, model or not */
+  points: z.array(modelPointSchema),
+  /** SHORT: no best of 2 to 5 minutes; LONG: none of 10 to 20 minutes */
+  missing: z.array(z.enum(['SHORT', 'LONG'])),
+});
+
+export type PerformanceModelSlotDto = z.infer<
+  typeof performanceModelSlotSchema
+>;
+
+/** Performance models from the bests of the last days. Nothing is stored. */
+export const performanceModelsSchema = z.object({
+  from: z.coerce.date(),
+  days: z.number(),
+  running: z.object({
+    pace: performanceModelSlotSchema,
+    power: performanceModelSlotSchema,
+    /**
+     * Heart rate drift against pace or power, in percent: the median of the
+     * steady runs of an hour or more. Null without such a run.
+     */
+    durability: z
+      .object({ value: z.number(), activities: z.number() })
+      .nullable(),
+    /** Race times from the pace model */
+    predictions: z.array(
+      z.object({ distance: z.number(), seconds: z.number() }),
+    ),
+    /** Metres per second a marathon should not start above */
+    marathonStartSpeed: z.number().nullable(),
+  }),
+  cycling: z.object({ power: performanceModelSlotSchema }),
+});
+
+export type PerformanceModelsDto = z.infer<typeof performanceModelsSchema>;
 
 /** Metrics modelled from the activities of the last days, not entered. */
 export const modeledMetricsSchema = z.object({
@@ -183,13 +223,6 @@ export const modeledMetricsSchema = z.object({
   days: z.number(),
   ftpRunning: modeledFtpSchema.nullable(),
   ftpCycling: modeledFtpSchema.nullable(),
-  /** Running only: the reference values of the test are for running */
-  trainingFocusRunning: trainingFocusSchema.nullable(),
-  /**
-   * The values the records could not give, so no focus is named: no record
-   * close enough to the duration, or records that are not maximal efforts
-   */
-  trainingFocusRunningMissing: z.array(z.enum(TRAINING_FOCUS_VALUE)),
 });
 
 export type ModeledMetricsDto = z.infer<typeof modeledMetricsSchema>;

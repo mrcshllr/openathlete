@@ -197,6 +197,8 @@ enum RecordType {
   CADENCE
   /// Metres climbed per hour, by duration
   VERTICAL_SPEED
+  /// Grade-adjusted metres per second, by duration (running)
+  GAP_SPEED
 
   @@map("record_type")
 }

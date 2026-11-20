@@ -164,6 +164,25 @@ describe('duration records', () => {
   });
 });
 
+describe('grade-adjusted speed records (selfhost)', () => {
+  const time = Array.from({ length: 1501 }, (_, i) => i);
+  const gap = time.map((t) => (t < 300 ? 5 : 4));
+  const gapSpeed = (sport: string) =>
+    new Map(
+      computeRecords({ time, gap }, sport)
+        .filter((record) => record.type === 'GAP_SPEED')
+        .map((record) => [record.duration!, record.value]),
+    );
+
+  test('keeps the durations of the critical speed model, on runs only', () => {
+    const records = gapSpeed('TRAIL_RUNNING');
+    expect([...records.keys()]).toEqual([120, 300, 600, 1200]);
+    expect(records.get(300)).toBeCloseTo(5, 6);
+    expect(records.get(600)).toBeCloseTo(4.5, 6);
+    expect(gapSpeed('CYCLING').size).toBe(0);
+  });
+});
+
 describe('climbing speed records', () => {
   const verticalSpeed = (stream: ActivityStream, sport = 'TRAIL_RUNNING') =>
     new Map(

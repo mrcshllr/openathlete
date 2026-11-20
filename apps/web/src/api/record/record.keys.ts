@@ -3,6 +3,7 @@ export const recordKeys = {
   getRecords: 'RecordAPI.getRecords',
   getRecordSports: 'RecordAPI.getRecordSports',
   getModeledMetrics: 'RecordAPI.getModeledMetrics',
+  getPerformanceModels: 'RecordAPI.getPerformanceModels',
   getRunningEconomy: 'RecordAPI.getRunningEconomy',
   getRecordHistory: 'RecordAPI.getRecordHistory',
   getRecordEfforts: 'RecordAPI.getRecordEfforts',

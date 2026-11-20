@@ -7,12 +7,14 @@ import {
   GetRecordHistoryQueryDto,
   GetRecordsQueryDto,
   ModeledMetricsDto,
+  PerformanceModelsDto,
   RecordEffortDto,
   RecordExclusionDto,
   RecordHistoryDto,
   RunningEconomyDto,
   SPORT_TYPE,
   modeledMetricsSchema,
+  performanceModelsSchema,
   runningEconomySchema,
 } from '@openathlete/shared';
 
@@ -26,6 +28,16 @@ export class RecordAPI {
       },
     });
     return res.data;
+  }
+
+  /** Critical speed and power models, and the training focus (selfhost). */
+  static async getPerformanceModels(
+    athleteId?: number,
+  ): Promise<PerformanceModelsDto> {
+    const res = await client.get(routes.record.getPerformanceModels, {
+      params: { athleteId },
+    });
+    return performanceModelsSchema.parse(res.data);
   }
 
   /** FTP for running and cycling, modelled from the last 90 days. */

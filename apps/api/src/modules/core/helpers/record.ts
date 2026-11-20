@@ -1,5 +1,9 @@
 import { Record as PrismaRecord, RecordType } from '@openathlete/database';
-import { ActivityStream, isValidGpsPoint } from '@openathlete/shared';
+import {
+  ActivityStream,
+  PERFORMANCE_MODEL_DURATIONS,
+  isValidGpsPoint,
+} from '@openathlete/shared';
 
 import { highestVerticalSpeed } from './record-plausibility';
 
@@ -47,6 +51,9 @@ const VERTICAL_SPEED_SPORTS = new Set<string>([
   'BACKCOUNTRY_SKI',
   'NORDIC_SKI',
 ]);
+
+const GAP_SPEED_SPORTS = new Set(['RUNNING', 'TRAIL_RUNNING']);
+const GAP_SPEED_DURATIONS = new Set<number>(PERFORMANCE_MODEL_DURATIONS);
 
 /** Altitude is smoothed with the median of this window */
 const ALTITUDE_MEDIAN_SECONDS = 30;
@@ -422,6 +429,13 @@ export const computeRecords = (
     // Climbing needs the altitude only: a treadmill with an incline has none
     ...(altitude?.length && sport && VERTICAL_SPEED_SPORTS.has(sport)
       ? computeVerticalSpeedRecords(time, altitude)
+      : []),
+    // Selfhost: grade-adjusted speed, for the critical speed model. The
+    // stream has it once the GAP processor ran, on runs only
+    ...(stream.gap?.length && sport && GAP_SPEED_SPORTS.has(sport)
+      ? computeDurationRecords('GAP_SPEED', time, stream.gap).filter((record) =>
+          GAP_SPEED_DURATIONS.has(record.duration ?? 0),
+        )
       : []),
   ];
 

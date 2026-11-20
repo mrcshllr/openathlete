@@ -8,6 +8,7 @@ import {
 } from '@/api/record';
 import { EventDetails } from '@/components/event-details/event-details';
 import { GarminAttribution } from '@/components/garmin-attribution/garmin-attribution';
+import { PerformanceModelCard } from '@/components/performance-model/performance-model-card';
 import { RecordDetailDialog } from '@/components/records/record-detail-dialog';
 import {
   allTimeRecords,
@@ -409,6 +410,10 @@ export function RecordsView({ athleteId }: P) {
               {sport === SPORT_TYPE.RUNNING && (
                 // This season says more of the current level than an old best
                 <TrainingPacesCard recordSets={[seasonRecords, records]} />
+              )}
+              {(sport === SPORT_TYPE.RUNNING ||
+                sport === SPORT_TYPE.TRAIL_RUNNING) && (
+                <PerformanceModelCard athleteId={athleteId} />
               )}
               <LatestRecordsCard
                 records={latestRecords(records, currentYear, suspects)}

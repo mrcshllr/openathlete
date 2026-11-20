@@ -21,24 +21,31 @@ import {
   FTP_MODEL_DAYS,
   FTP_MODEL_SPORTS,
   GetRecordEffortsQueryDto,
+  MARATHON_START_SHARE,
   ModeledMetricsDto,
+  PerformanceModelSlotDto,
+  PerformanceModelsDto,
   PowerEffort,
   RECORD_TYPE,
   RecordEffortDto,
   RecordExclusionDto,
   RecordHistoryDto,
   RunningEconomyDto,
-  TRAINING_FOCUS_DURATIONS,
   YEAR_REVIEW_RECORD_SPORTS,
   YearBestRecordDto,
   YearReviewRecordDto,
-  aerobicThresholdPower,
+  athleteProfile,
+  fitCriticalModel,
+  isReliableModel,
   median,
-  missingTrainingFocusValues,
+  missingModelEfforts,
+  modelEfforts,
   modelFtp,
-  modelTrainingFocus,
-  powerAt,
+  profilePosition,
+  racePredictions,
+  reserveSeconds,
   runEnergyPerMetre,
+  trainingFocusOf,
 } from '@openathlete/shared';
 
 import { CaslAbilityFactory } from 'src/modules/auth';
@@ -115,6 +122,10 @@ const RUNNING_ECONOMY_MAX_CLIMB = 0.01;
  */
 const RUNNING_ECONOMY_CANDIDATES = 20;
 const RUNNING_ECONOMY_MAX_RUNS = 12;
+
+/** Runs the durability is read from: an hour or more, mostly easy */
+const DURABILITY_MIN_SECONDS = 60 * 60;
+const DURABILITY_LOW_SHARE = 0.8;
 
 @Injectable()
 export class RecordService {
@@ -270,54 +281,145 @@ export class RecordService {
     from.setUTCHours(0, 0, 0, 0);
     from.setUTCDate(from.getUTCDate() - FTP_MODEL_DAYS);
 
-    const efforts = async (
-      sports: readonly string[],
-    ): Promise<PowerEffort[]> => {
-      const rows = await this.prisma.$queryRaw<BestRecordRow[]>`
-        SELECT DISTINCT ON (r.duration)
-          r.record_id, r.type, r.distance, r.duration, r.value, r.date,
-          a.event_id, e.name AS activity_name
-        FROM record r
-        JOIN event_activity a ON a.event_activity_id = r.event_activity_id
-        LEFT JOIN event e ON e.event_id = a.event_id
-        WHERE r.athlete_id = ${targetAthleteId}
-          AND r.type = 'POWER'
-          AND a.sport::text IN (${Prisma.join([...sports])})
-          AND r.date >= ${from}
-          AND ${notExcluded}
-        ORDER BY r.duration, r.value DESC`;
-      return rows.map((row) => ({
-        duration: row.duration ?? 0,
-        value: row.value,
-        date: row.date,
-        eventId: row.event_id,
-        activityName: row.activity_name,
-      }));
-    };
+    const efforts = (sports: readonly string[]) =>
+      this.bestEfforts(targetAthleteId, 'POWER', sports, from);
 
     const [running, cycling] = await Promise.all([
       efforts(FTP_MODEL_SPORTS.running),
       efforts(FTP_MODEL_SPORTS.cycling),
     ]);
-    const ftpRunning = modelFtp(running);
-    // Read from the records, never guessed: a value they cannot give leaves
-    // the focus unnamed, and says which
-    const focusValues = {
-      aerobicThreshold: aerobicThresholdPower(running),
-      lactateThreshold: ftpRunning?.value ?? null,
-      vo2max: powerAt(running, TRAINING_FOCUS_DURATIONS.vo2max),
-    };
-    const { aerobicThreshold, lactateThreshold, vo2max } = focusValues;
     return {
       from,
       days: FTP_MODEL_DAYS,
-      ftpRunning,
+      ftpRunning: modelFtp(running),
       ftpCycling: modelFtp(cycling),
-      trainingFocusRunning:
-        aerobicThreshold && lactateThreshold && vo2max
-          ? modelTrainingFocus({ aerobicThreshold, lactateThreshold, vo2max })
+    };
+  }
+
+  /** The best of each duration since a date, records an athlete excluded left out */
+  private async bestEfforts(
+    athleteId: number,
+    type: 'POWER' | 'GAP_SPEED',
+    sports: readonly string[],
+    from: Date,
+  ): Promise<PowerEffort[]> {
+    const rows = await this.prisma.$queryRaw<BestRecordRow[]>`
+      SELECT DISTINCT ON (r.duration)
+        r.record_id, r.type, r.distance, r.duration, r.value, r.date,
+        a.event_id, e.name AS activity_name
+      FROM record r
+      JOIN event_activity a ON a.event_activity_id = r.event_activity_id
+      LEFT JOIN event e ON e.event_id = a.event_id
+      WHERE r.athlete_id = ${athleteId}
+        AND r.type::text = ${type}
+        AND a.sport::text IN (${Prisma.join([...sports])})
+        AND r.date >= ${from}
+        AND ${notExcluded}
+      ORDER BY r.duration, r.value DESC`;
+    return rows.map((row) => ({
+      duration: row.duration ?? 0,
+      value: row.value,
+      date: row.date,
+      eventId: row.event_id,
+      activityName: row.activity_name,
+    }));
+  }
+
+  /**
+   * Selfhost: the critical power model of running (on grade-adjusted pace
+   * and on power) and of cycling, from the bests of 2 to 20 minutes of the
+   * last days, with what it suggests to train. See performance-model.ts for
+   * the sources, and for what is an assumption of this instance.
+   */
+  async getPerformanceModels(
+    user: AuthUser,
+    athleteId?: Athlete['athleteId'],
+    now = new Date(),
+  ): Promise<PerformanceModelsDto> {
+    const targetAthleteId = await this.targetAthleteId(user, athleteId);
+    const from = new Date(now);
+    from.setUTCHours(0, 0, 0, 0);
+    from.setUTCDate(from.getUTCDate() - FTP_MODEL_DAYS);
+
+    const [pace, runPower, ridePower, [drift]] = await Promise.all([
+      this.bestEfforts(
+        targetAthleteId,
+        'GAP_SPEED',
+        FTP_MODEL_SPORTS.running,
+        from,
+      ),
+      this.bestEfforts(
+        targetAthleteId,
+        'POWER',
+        FTP_MODEL_SPORTS.running,
+        from,
+      ),
+      this.bestEfforts(
+        targetAthleteId,
+        'POWER',
+        FTP_MODEL_SPORTS.cycling,
+        from,
+      ),
+      // Steady runs of an hour or more: mostly below the first threshold
+      this.prisma.$queryRaw<{ value: number | null; activities: number }[]>`
+        SELECT
+          (percentile_cont(0.5) WITHIN GROUP (ORDER BY a.decoupling_percent))::float8 AS value,
+          count(*)::int AS activities
+        FROM event_activity a
+        JOIN event e ON e.event_id = a.event_id
+        WHERE e.athlete_id = ${targetAthleteId}
+          AND e.start_date >= ${from}
+          AND a.sport::text IN (${Prisma.join([...FTP_MODEL_SPORTS.running])})
+          AND a.decoupling_percent IS NOT NULL
+          AND a.moving_time >= ${DURABILITY_MIN_SECONDS}
+          AND a.intensity_seconds[1] >= ${DURABILITY_LOW_SHARE} * (
+            a.intensity_seconds[1] + a.intensity_seconds[2] + a.intensity_seconds[3])`,
+    ]);
+    const durability =
+      drift && drift.value !== null && drift.activities > 0
+        ? { value: drift.value, activities: drift.activities }
+        : null;
+
+    const slot = (
+      efforts: PowerEffort[],
+      drifting: number | null,
+    ): PerformanceModelSlotDto => {
+      const points = modelEfforts(efforts);
+      const fitted = fitCriticalModel(efforts);
+      const missing = missingModelEfforts(efforts);
+      if (!fitted) return { model: null, points, missing };
+      const reliable = isReliableModel(fitted);
+      return {
+        model: {
+          ...fitted,
+          reserveSeconds: reserveSeconds(fitted),
+          reliable,
+          profile: athleteProfile(fitted),
+          profilePosition: profilePosition(fitted),
+          focus: trainingFocusOf(fitted, drifting),
+          points,
+        },
+        points,
+        // A short best that was not all out is as good as none
+        missing: reliable ? missing : ['SHORT'],
+      };
+    };
+
+    const paceSlot = slot(pace, durability?.value ?? null);
+    return {
+      from,
+      days: FTP_MODEL_DAYS,
+      running: {
+        pace: paceSlot,
+        power: slot(runPower, durability?.value ?? null),
+        durability,
+        predictions: paceSlot.model ? racePredictions(paceSlot.model) : [],
+        marathonStartSpeed: paceSlot.model
+          ? paceSlot.model.critical * MARATHON_START_SHARE
           : null,
-      trainingFocusRunningMissing: missingTrainingFocusValues(focusValues),
+      },
+      // Heart rate drift is read on runs only
+      cycling: { power: slot(ridePower, null) },
     };
   }
 
