@@ -204,6 +204,124 @@ describe('RecordService (PostgreSQL)', () => {
       expect(modeled.ftpCycling).toMatchObject({ value: 250, duration: 3600 });
     });
 
+    describe('performance models', () => {
+      /** The fastest grade-adjusted time over a distance, on D = reserve + cs t */
+      const gap = (distance: number, cs: number, reserve: number) =>
+        prisma.record.create({
+          data: {
+            type: 'GAP_SPEED',
+            distance,
+            value: (distance - reserve) / cs,
+            date: new Date('2026-11-01'),
+            athleteId: DELETED_ATHLETE_ID,
+            eventActivityId: 3501,
+          },
+        });
+      const models = () =>
+        service.getPerformanceModels(athlete, undefined, now);
+
+      it('fits critical speed to 400 m, 800 m and 5 km, and critical power to 2 to 20 minutes', async () => {
+        // The D' of the reference runners: 136 m
+        for (const d of [400, 800, 5000]) await gap(d, 4, 136);
+        for (const t of [120, 300, 600, 1200])
+          await power(3501, t, 300 + 18000 / t);
+
+        const { running, cycling, days, from } = await models();
+
+        expect(days).toBe(112);
+        expect(from).toEqual(new Date('2026-07-27T00:00:00Z'));
+        expect(running.pace.model?.critical).toBeCloseTo(4, 6);
+        expect(running.pace.model?.reserve).toBeCloseTo(136, 4);
+        expect(running.pace).toMatchObject({
+          model: { reliable: true },
+          missing: [],
+        });
+        expect(running.pace.points.map((p) => p.distance)).toEqual([
+          400, 800, 5000,
+        ]);
+        expect(running.profile).toEqual({
+          type: 'HYBRID',
+          position: expect.closeTo(0.5, 6),
+        });
+        expect(running.focus).toBe('BALANCED');
+        expect(running.power.model?.critical).toBeCloseTo(300, 6);
+        expect(running.power.model?.reserve).toBeCloseTo(18000, 2);
+        // 5 km as the model was fitted to it; the marathon at 84.8% of CS
+        expect(running.predictions[0]).toEqual({
+          distance: 5000,
+          seconds: expect.closeTo(1216, 4),
+        });
+        expect(running.predictions[3].seconds).toBeCloseTo(
+          42195 / (4 * 0.848),
+          4,
+        );
+        expect(running.marathonStartSpeed).toBeCloseTo(3.76, 6);
+        // No ride, no steady run of an hour
+        expect(cycling.power).toEqual({
+          model: null,
+          points: [],
+          missing: ['SHORT', 'LONG'],
+        });
+        expect(running.durability).toBeNull();
+      });
+
+      it('says which end is missing, and reads nothing from a flat line', async () => {
+        await gap(5000, 4, 136);
+        expect((await models()).running.pace).toMatchObject({
+          model: null,
+          missing: ['SHORT'],
+        });
+
+        // Short bests that were not all out: a D' of 20 m
+        await prisma.record.deleteMany();
+        for (const d of [400, 800, 5000]) await gap(d, 4, 20);
+        const { running } = await models();
+
+        expect(running.pace.model).toMatchObject({ reliable: false });
+        expect(running.pace.missing).toEqual(['SHORT']);
+        expect(running.profile).toBeNull();
+        expect(running.focus).toBeNull();
+        expect(running.predictions).toEqual([]);
+      });
+
+      it('names the side the profile is short of', async () => {
+        // A D' over one standard deviation above the reference: 136 + 39
+        for (const d of [400, 800, 5000]) await gap(d, 4, 180);
+        expect((await models()).running).toMatchObject({
+          profile: { type: 'SPEED' },
+          focus: 'THRESHOLD',
+        });
+
+        await prisma.record.deleteMany();
+        for (const d of [400, 800, 5000]) await gap(d, 4, 90);
+        expect((await models()).running).toMatchObject({
+          profile: { type: 'ENDURANCE' },
+          focus: 'SHORT_INTERVALS',
+        });
+      });
+
+      it('puts long runs first when heart rate drifts on steady runs', async () => {
+        for (const d of [400, 800, 5000]) await gap(d, 4, 180);
+        await prisma.eventActivity.update({
+          where: { eventActivityId: 3501 },
+          data: {
+            movingTime: 5400,
+            decouplingPercent: 8,
+            intensitySeconds: [5000, 300, 100],
+          },
+        });
+        await prisma.event.update({
+          where: { eventId: 3002 },
+          data: { startDate: new Date('2026-11-01') },
+        });
+
+        const { running } = await models();
+
+        expect(running.durability).toEqual({ value: 8, activities: 1 });
+        expect(running.focus).toBe('LONG_RUNS');
+      });
+    });
+
     it('leaves out an excluded effort', async () => {
       await power(3501, 1200, 335);
       await prisma.recordExclusion.create({

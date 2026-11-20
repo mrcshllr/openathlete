@@ -109,3 +109,13 @@ export const useDeleteRecordExclusionMutation = () => {
     onSuccess: invalidate,
   });
 };
+
+export const useGetPerformanceModelsQuery = (
+  athleteId?: number,
+  { enabled = true }: { enabled?: boolean } = {},
+) =>
+  useQuery({
+    queryFn: () => RecordAPI.getPerformanceModels(athleteId),
+    queryKey: [recordKeys.getPerformanceModels, athleteId],
+    enabled,
+  });

@@ -57,6 +57,10 @@ export function isPlausibleRecord(
   if (type === 'POWER') {
     return value <= (lookup(HIGHEST_POWER, duration) ?? Infinity);
   }
+  // Grade-adjusted time: held to the same records as the pace
+  if (type === 'GAP_SPEED') {
+    return value >= (lookup(FASTEST_RUN, distance) ?? 0);
+  }
   if (type === 'SPEED' && RUNNING.has(sport)) {
     return value >= (lookup(FASTEST_RUN, distance) ?? 0);
   }

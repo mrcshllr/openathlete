@@ -141,6 +141,30 @@ export class RecordController {
     return this.recordService.getModeledMetrics(user, athleteId);
   }
 
+  @Get('performance-models')
+  @ApiOperation({
+    summary: 'Critical power and critical speed models, and the training focus',
+    description:
+      "For running, critical speed (CS in m/s) and the distance above it (D' in metres) from the fastest grade-adjusted 400 m, 800 m and 5 km of the last 16 weeks, as Smyth & Muniz-Pumares (2020) fitted them to training data; a D' too small against their runners marks the model unreliable. From a reliable one: the profile between endurance and speed (D' against their mean and standard deviation), the training focus, race predictions and the speed a marathon should not start above (94% of CS). Durability is the median heart rate drift of the steady runs of an hour or more. For running and cycling power, critical power (CP in watts) and W' in joules from the bests of 2, 5, 10 and 20 minutes (Monod & Scherrer 1965). Each slot lists the bests it found and which end of its range is missing. Nothing is stored.",
+  })
+  @ApiQuery({
+    name: 'athleteId',
+    type: Number,
+    description:
+      "Optional athlete ID. If not provided, uses authenticated user's athlete.",
+    required: false,
+  })
+  @ApiResponse({ status: 200, description: 'The models of the athlete' })
+  @ApiResponse({ status: 403, description: 'Not allowed to read the athlete' })
+  @ApiResponse({ status: 404, description: 'Athlete not found' })
+  getPerformanceModels(
+    @JwtUser() user: AuthUser,
+    @Query('athleteId', new ParseIntPipe({ optional: true }))
+    athleteId?: Athlete['athleteId'],
+  ) {
+    return this.recordService.getPerformanceModels(user, athleteId);
+  }
+
   @UseGuards(AuthGuard('jwt'), UserTypeGuard)
   @ApiBearerAuth()
   @Get('sports')

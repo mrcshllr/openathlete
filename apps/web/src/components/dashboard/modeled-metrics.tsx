@@ -10,6 +10,8 @@ import { getDateLocale } from '@/utils/locales';
 
 import { METRIC_TYPE, ModeledFtpDto } from '@openathlete/shared';
 
+import { TrainingFocusCard } from '../performance-model/training-focus-card';
+
 const formatDay = (date: Date) =>
   date.toLocaleDateString(getDateLocale(getLocale()), {
     day: 'numeric',
@@ -89,6 +91,8 @@ export function ModeledMetrics({ athleteId }: { athleteId?: number }) {
           <GarminAttribution athleteId={athleteId} />
         </>
       )}
+      {/* Its own request, and its own word on what is missing */}
+      <TrainingFocusCard athleteId={athleteId} />
     </div>
   );
 }

@@ -21,7 +21,12 @@ import {
   FTP_MODEL_EFFORTS,
   FTP_MODEL_SPORTS,
   GetRecordEffortsQueryDto,
+  MARATHON_START_SHARE,
+  ModelPointDto,
   ModeledMetricsDto,
+  PERFORMANCE_MODEL_DAYS,
+  PerformanceModelSlotDto,
+  PerformanceModelsDto,
   PowerEffort,
   RECORD_TYPE,
   RecordEffortDto,
@@ -30,7 +35,18 @@ import {
   YEAR_REVIEW_RECORD_SPORTS,
   YearBestRecordDto,
   YearReviewRecordDto,
+  athleteProfile,
+  criticalPowerEfforts,
+  criticalSpeedEfforts,
+  fitCriticalPower,
+  fitCriticalSpeed,
+  isReliableSpeedModel,
+  missingPowerEfforts,
+  missingSpeedEfforts,
   modelFtp,
+  profilePosition,
+  racePredictions,
+  trainingFocusOf,
 } from '@openathlete/shared';
 
 import { CaslAbilityFactory } from 'src/modules/auth';
@@ -95,6 +111,17 @@ const toExclusion = (
   distance: exclusion.distance,
   duration: exclusion.duration,
 });
+
+const hasDuration = (
+  point: ModelPointDto,
+): point is ModelPointDto & { duration: number } => point.duration !== null;
+const hasDistance = (
+  point: ModelPointDto,
+): point is ModelPointDto & { distance: number } => point.distance !== null;
+
+/** Runs the durability is read from: an hour or more, mostly easy */
+const DURABILITY_MIN_SECONDS = 60 * 60;
+const DURABILITY_LOW_SHARE = 0.8;
 
 @Injectable()
 export class RecordService {
@@ -284,6 +311,130 @@ export class RecordService {
       days: FTP_MODEL_DAYS,
       ftpRunning: modelFtp(running),
       ftpCycling: modelFtp(cycling),
+    };
+  }
+
+  /**
+   * The best of each duration (power) or distance (grade-adjusted time)
+   * since a date, records an athlete excluded left out
+   */
+  private async bestEfforts(
+    athleteId: number,
+    type: 'POWER' | 'GAP_SPEED',
+    sports: readonly string[],
+    from: Date,
+  ): Promise<ModelPointDto[]> {
+    // The most watts over a duration, the least seconds over a distance
+    const each =
+      type === 'POWER' ? Prisma.sql`r.duration` : Prisma.sql`r.distance`;
+    const best =
+      type === 'POWER'
+        ? Prisma.sql`r.duration, r.value DESC`
+        : Prisma.sql`r.distance, r.value ASC`;
+    const rows = await this.prisma.$queryRaw<BestRecordRow[]>`
+      SELECT DISTINCT ON (${each})
+        r.record_id, r.type, r.distance, r.duration, r.value, r.date,
+        a.event_id, e.name AS activity_name
+      FROM record r
+      JOIN event_activity a ON a.event_activity_id = r.event_activity_id
+      LEFT JOIN event e ON e.event_id = a.event_id
+      WHERE r.athlete_id = ${athleteId}
+        AND r.type::text = ${type}
+        AND a.sport::text IN (${Prisma.join([...sports])})
+        AND r.date >= ${from}
+        AND ${notExcluded}
+      ORDER BY ${best}`;
+    return rows.map((row) => ({
+      distance: row.distance,
+      duration: row.duration,
+      value: row.value,
+      date: row.date,
+      eventId: row.event_id,
+      activityName: row.activity_name,
+    }));
+  }
+
+  /**
+   * Critical speed of running, on grade-adjusted pace, with the profile and
+   * the training focus it suggests, and critical power of running and
+   * cycling: from the bests of the last 16 weeks. See performance-model.ts
+   * for the sources.
+   */
+  async getPerformanceModels(
+    user: AuthUser,
+    athleteId?: Athlete['athleteId'],
+    now = new Date(),
+  ): Promise<PerformanceModelsDto> {
+    const targetAthleteId = await this.targetAthleteId(user, athleteId);
+    const from = new Date(now);
+    from.setUTCHours(0, 0, 0, 0);
+    from.setUTCDate(from.getUTCDate() - PERFORMANCE_MODEL_DAYS);
+    const { running, cycling } = FTP_MODEL_SPORTS;
+
+    const [pace, runPower, ridePower, [drift]] = await Promise.all([
+      this.bestEfforts(targetAthleteId, 'GAP_SPEED', running, from),
+      this.bestEfforts(targetAthleteId, 'POWER', running, from),
+      this.bestEfforts(targetAthleteId, 'POWER', cycling, from),
+      // Steady runs of an hour or more: mostly below the first threshold
+      this.prisma.$queryRaw<{ value: number | null; activities: number }[]>`
+        SELECT
+          (percentile_cont(0.5) WITHIN GROUP (ORDER BY a.decoupling_percent))::float8 AS value,
+          count(*)::int AS activities
+        FROM event_activity a
+        JOIN event e ON e.event_id = a.event_id
+        WHERE e.athlete_id = ${targetAthleteId}
+          AND e.start_date >= ${from}
+          AND a.sport::text IN (${Prisma.join([...running])})
+          AND a.decoupling_percent IS NOT NULL
+          AND a.moving_time >= ${DURABILITY_MIN_SECONDS}
+          AND a.intensity_seconds[1] >= ${DURABILITY_LOW_SHARE} * (
+            a.intensity_seconds[1] + a.intensity_seconds[2] + a.intensity_seconds[3])`,
+    ]);
+    const durability =
+      drift && drift.value !== null && drift.activities > 0
+        ? { value: drift.value, activities: drift.activities }
+        : null;
+
+    const powerSlot = (efforts: ModelPointDto[]): PerformanceModelSlotDto => {
+      const points = efforts.filter(hasDuration);
+      const model = fitCriticalPower(points);
+      return {
+        model: model && { ...model, reliable: true },
+        points: criticalPowerEfforts(points),
+        missing: missingPowerEfforts(points),
+      };
+    };
+    const speedPoints = pace.filter(hasDistance);
+    const speedModel = fitCriticalSpeed(speedPoints);
+    const reliable = speedModel ? isReliableSpeedModel(speedModel) : false;
+    const trusted = speedModel && reliable ? speedModel : null;
+
+    return {
+      from,
+      days: PERFORMANCE_MODEL_DAYS,
+      running: {
+        pace: {
+          model: speedModel && { ...speedModel, reliable },
+          points: criticalSpeedEfforts(speedPoints),
+          // A short best that was not all out is as good as none
+          missing:
+            speedModel && !reliable
+              ? ['SHORT']
+              : missingSpeedEfforts(speedPoints),
+        },
+        power: powerSlot(runPower),
+        profile: trusted && {
+          type: athleteProfile(trusted),
+          position: profilePosition(trusted),
+        },
+        focus: trusted && trainingFocusOf(trusted, durability?.value ?? null),
+        durability,
+        predictions: trusted ? racePredictions(trusted) : [],
+        marathonStartSpeed: trusted
+          ? trusted.critical * MARATHON_START_SHARE
+          : null,
+      },
+      cycling: { power: powerSlot(ridePower) },
     };
   }
 

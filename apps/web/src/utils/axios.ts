@@ -110,6 +110,7 @@ export const routes = {
     getRecords: '/record',
     getRecordSports: '/record/sports',
     getModeledMetrics: '/record/modeled-metrics',
+    getPerformanceModels: '/record/performance-models',
     getRecordHistory: '/record/history',
     getRecordEfforts: '/record/efforts',
     getRecordExclusions: '/record/exclusions',

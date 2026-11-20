@@ -9,6 +9,10 @@ const response = vi.hoisted(() => ({ data: undefined as unknown }));
 vi.mock('@/api/record', () => ({
   useGetModeledMetricsQuery: () => ({ data: response.data, isLoading: false }),
 }));
+// The focus card has its own request and its own test
+vi.mock('../performance-model/training-focus-card', () => ({
+  TrainingFocusCard: () => null,
+}));
 vi.mock('@/components/garmin-attribution/garmin-attribution', () => ({
   GarminAttribution: () => <p data-testid="garmin-attribution" />,
 }));

@@ -23,6 +23,7 @@ import {
   xSeries,
 } from '../../activity-analysis/stream-range';
 import { ZonesCard } from '../../activity-analysis/zones-card';
+import { ReserveCard } from '../../performance-model/reserve-card';
 import { ActivityRecordsCharts } from '../../records/activity-records-charts';
 import { ChartRecord } from '../../records/record-metrics';
 import { StrengthLogCard } from '../../strength/strength-log-card';
@@ -146,6 +147,13 @@ export function ActivityDetailsOverviewTab({
       <SectionAnchor id={id('notes')} />
       {stream && <ZonesCard event={event} stream={stream} />}
       {stream && <DecouplingCard stream={stream} sport={event.sport} />}
+      {stream && (
+        <ReserveCard
+          stream={stream}
+          sport={event.sport}
+          athleteId={event.athleteId ?? undefined}
+        />
+      )}
       {feedbackCard}
       <ActivitySupporterNudge event={event} isMyActivity={isMyActivity} />
       {!!event.records?.length && (

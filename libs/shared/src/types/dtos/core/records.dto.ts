@@ -2,6 +2,10 @@ import z from 'zod';
 
 import { RECORD_TYPE } from '../../misc/core/record-type.enum';
 import { SPORT_TYPE } from '../../misc/core/sport-type.enum';
+import {
+  ATHLETE_PROFILE,
+  TRAINING_FOCUS,
+} from '../../../utils/performance-model';
 
 /** Best record at one distance or duration, with the activity it comes from. */
 export const bestRecordSchema = z.object({
@@ -133,6 +137,88 @@ export const modeledFtpSchema = z.object({
 });
 
 export type ModeledFtpDto = z.infer<typeof modeledFtpSchema>;
+
+/** A best effort a performance model is read from */
+export const modelPointSchema = z.object({
+  /** Metres: the efforts of critical speed */
+  distance: z.number().nullable(),
+  /** Seconds: the efforts of critical power */
+  duration: z.number().nullable(),
+  /** Grade-adjusted seconds over the distance, or watts over the duration */
+  value: z.number(),
+  date: z.coerce.date(),
+  eventId: z.number().nullable(),
+  activityName: z.string().nullable(),
+});
+
+export type ModelPointDto = z.infer<typeof modelPointSchema>;
+
+/** A critical speed (CS, D') or critical power (CP, W') model */
+export const performanceModelSchema = z.object({
+  /** CS in metres per second, or CP in watts */
+  critical: z.number(),
+  /** D' in metres, or W' in joules */
+  reserve: z.number(),
+  /**
+   * False for a D' too small to believe: the short bests were not all out,
+   * so no profile and no focus are read from it. Always true for power,
+   * which has no reference to be held against.
+   */
+  reliable: z.boolean(),
+});
+
+export type PerformanceModelDto = z.infer<typeof performanceModelSchema>;
+
+/** One measure of one sport: its model, the bests found, what is missing */
+export const performanceModelSlotSchema = z.object({
+  model: performanceModelSchema.nullable(),
+  points: z.array(modelPointSchema),
+  /**
+   * SHORT: no best over 400 or 800 m (pace), 2 to 5 minutes (power), or one
+   * that was not all out; LONG: none over 5 km, or 10 to 20 minutes
+   */
+  missing: z.array(z.enum(['SHORT', 'LONG'])),
+});
+
+export type PerformanceModelSlotDto = z.infer<
+  typeof performanceModelSlotSchema
+>;
+
+/** Performance models from the bests of the last days. Nothing is stored. */
+export const performanceModelsSchema = z.object({
+  from: z.coerce.date(),
+  days: z.number(),
+  running: z.object({
+    /** Critical speed, on grade-adjusted pace */
+    pace: performanceModelSlotSchema,
+    power: performanceModelSlotSchema,
+    /** Where D' places the runner; null without a reliable pace model */
+    profile: z
+      .object({
+        type: z.enum(ATHLETE_PROFILE),
+        /** 0 at the endurance end of the scale, 1 at the speed end */
+        position: z.number(),
+      })
+      .nullable(),
+    focus: z.enum(TRAINING_FOCUS).nullable(),
+    /**
+     * Heart rate drift against pace or power, in percent: the median of the
+     * steady runs of an hour or more. Null without such a run.
+     */
+    durability: z
+      .object({ value: z.number(), activities: z.number() })
+      .nullable(),
+    /** Race times from the pace model */
+    predictions: z.array(
+      z.object({ distance: z.number(), seconds: z.number() }),
+    ),
+    /** Metres per second a marathon should not start above */
+    marathonStartSpeed: z.number().nullable(),
+  }),
+  cycling: z.object({ power: performanceModelSlotSchema }),
+});
+
+export type PerformanceModelsDto = z.infer<typeof performanceModelsSchema>;
 
 /** Metrics modelled from the activities of the last days, not entered. */
 export const modeledMetricsSchema = z.object({
