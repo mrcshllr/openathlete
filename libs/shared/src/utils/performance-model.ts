@@ -1,6 +1,8 @@
 /**
  * The critical speed and critical power models, read from an athlete's best
  * efforts, and what they say about where running training should focus.
+ * Every figure shown from them (statistics, dashboard, activity) is computed
+ * here, and has its entry in the metric registry.
  *
  * Sources:
  * - Monod H, Scherrer J. The work capacity of a synergic muscular group.
@@ -16,8 +18,6 @@
  *   D' 136 +/- 39 m, marathon time predicted with R2 = 0.695 and an error
  *   of 7.67%. Marathons were run at 84.8% of CS on average, and a first half
  *   above 94% of CS went with slowing down by over 25% in the second.
- * - Riegel PS. Athletic records and human endurance. American Scientist
- *   1981;69(3):285-290: t2 = t1 x (d2 / d1)^1.06.
  * - Skiba PF, Fulford J, Clarke DC, Vanhatalo A, Jones AM. Intramuscular
  *   determinants of the ability to recover work capacity above critical
  *   power. Eur J Appl Physiol 2015;115(4):703-713: the balance of W' during
@@ -40,19 +40,33 @@ export const CRITICAL_POWER_DURATIONS = [120, 300, 600, 1200] as const;
 export const CRITICAL_POWER_SHORT = 300;
 export const CRITICAL_POWER_LONG = 600;
 
+/** Efforts a fit needs: with fewer, nothing says how well they agree */
+export const CRITICAL_MODEL_MIN_EFFORTS = 3;
+
+/** Two-sided 95% Student's t, by degrees of freedom */
+const T_95 = [12.71, 4.3, 3.18, 2.78, 2.57, 2.45, 2.36, 2.31, 2.26, 2.23];
+
 export interface CriticalModel {
   /** CP in watts, or CS in metres per second */
   critical: number;
+  /** Half width of its 95% interval, same unit */
+  margin: number;
   /** W' in joules, or D' in metres */
   reserve: number;
 }
 
 export type ModelGap = 'SHORT' | 'LONG';
 
-/** Least squares of work (joules, or metres) against seconds */
-function fitLine(points: { seconds: number; work: number }[]) {
+/**
+ * Least squares of work (joules, or metres) against seconds. The efforts are
+ * bests from training, not maximal tests: the result is at most what they
+ * show, and the interval says how well they agree.
+ */
+function fitLine(
+  points: { seconds: number; work: number }[],
+): CriticalModel | null {
   const n = points.length;
-  if (n < 2) return null;
+  if (n < CRITICAL_MODEL_MIN_EFFORTS) return null;
   const meanT = points.reduce((sum, p) => sum + p.seconds, 0) / n;
   const meanW = points.reduce((sum, p) => sum + p.work, 0) / n;
   let covariance = 0;
@@ -65,7 +79,14 @@ function fitLine(points: { seconds: number; work: number }[]) {
   const critical = covariance / variance;
   const reserve = meanW - critical * meanT;
   // A long effort stronger than a short one: the short one was not all out
-  return critical > 0 && reserve > 0 ? { critical, reserve } : null;
+  if (critical <= 0 || reserve <= 0) return null;
+  const residual = points.reduce(
+    (sum, p) => sum + (p.work - reserve - critical * p.seconds) ** 2,
+    0,
+  );
+  const standardError = Math.sqrt(residual / (n - 2) / variance);
+  const t = T_95[Math.min(n - 3, T_95.length - 1)];
+  return { critical, margin: t * standardError, reserve };
 }
 
 export interface PowerEffortPoint {
@@ -94,10 +115,12 @@ export function missingPowerEfforts(efforts: PowerEffortPoint[]): ModelGap[] {
     gaps.push('SHORT');
   if (!used.some((effort) => effort.duration >= CRITICAL_POWER_LONG))
     gaps.push('LONG');
+  if (gaps.length === 0 && used.length < CRITICAL_MODEL_MIN_EFFORTS)
+    gaps.push('LONG');
   return gaps;
 }
 
-/** CP and W' from the bests of 2 to 20 minutes, one on each side at least */
+/** CP and W' from the bests of 2 to 20 minutes, three of them at least */
 export function fitCriticalPower(
   efforts: PowerEffortPoint[],
 ): CriticalModel | null {
@@ -129,11 +152,12 @@ export function criticalSpeedEfforts<T extends SpeedEffortPoint>(
   });
 }
 
-/** SHORT without 400 or 800 m, LONG without 5,000 m */
+/** SHORT without the 400 or the 800 m, LONG without the 5,000 m */
 export function missingSpeedEfforts(efforts: SpeedEffortPoint[]): ModelGap[] {
   const used = criticalSpeedEfforts(efforts);
   const gaps: ModelGap[] = [];
-  if (!used.some((effort) => effort.distance < 5000)) gaps.push('SHORT');
+  if (used.filter((effort) => effort.distance < 5000).length < 2)
+    gaps.push('SHORT');
   if (!used.some((effort) => effort.distance === 5000)) gaps.push('LONG');
   return gaps;
 }
@@ -219,34 +243,8 @@ export function trainingFocusOf(
   return 'BALANCED';
 }
 
-export const RIEGEL_RACE_EXPONENT = 1.06;
-/** The share of critical speed marathons were run at, on average (Smyth) */
-export const MARATHON_SPEED_SHARE = 0.848;
 /** The share of critical speed a marathon should not start above (Smyth) */
 export const MARATHON_START_SHARE = 0.94;
-
-/**
- * Race times from a critical speed model: 5 km from the model itself, which
- * was fitted to it; 10 km and the half marathon from there by Riegel; the
- * marathon at the share of critical speed Smyth & Muniz-Pumares measured,
- * which predicted it within 7.67%.
- */
-export function racePredictions(
-  model: CriticalModel,
-): { distance: number; seconds: number }[] {
-  const five = (5000 - model.reserve) / model.critical;
-  const riegel = (distance: number) =>
-    five * (distance / 5000) ** RIEGEL_RACE_EXPONENT;
-  return [
-    { distance: 5000, seconds: five },
-    { distance: 10000, seconds: riegel(10000) },
-    { distance: 21097.5, seconds: riegel(21097.5) },
-    {
-      distance: 42195,
-      seconds: 42195 / (model.critical * MARATHON_SPEED_SHARE),
-    },
-  ];
-}
 
 /**
  * The reserve left at each sample of an effort, as a share of the whole

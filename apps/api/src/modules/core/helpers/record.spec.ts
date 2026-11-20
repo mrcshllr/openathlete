@@ -199,7 +199,12 @@ describe('grade-adjusted pace records', () => {
     expect(flat.get(400)?.value).toBeCloseTo(400 / 3, 0);
     expect(flat.get(5000)?.value).toBeCloseTo(5000 / 3, 0);
     expect(gapTimes({}, 'CYCLING').size).toBe(0);
-    expect(gapTimes({ altitude: undefined }).size).toBe(0);
+  });
+
+  test('takes the ground as flat without an altitude', () => {
+    const bare = gapTimes({ altitude: undefined });
+    expect(bare.get(400)?.value).toBeCloseTo(400 / 3, 0);
+    expect(bare.get(5000)?.value).toBeCloseTo(5000 / 3, 0);
   });
 });
 

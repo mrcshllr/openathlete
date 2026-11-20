@@ -19,6 +19,14 @@ const CLARKE_SKIBA = {
   label: 'Clarke & Skiba 2013',
   url: 'https://doi.org/10.1152/advan.00078.2011',
 };
+const SMYTH_MUNIZ_PUMARES = {
+  label: 'Smyth & Muniz-Pumares 2020',
+  url: 'https://doi.org/10.1249/MSS.0000000000002412',
+};
+const SANDFORD = {
+  label: 'Sandford et al. 2021',
+  url: 'https://doi.org/10.1007/s40279-021-01523-9',
+};
 const IMBACH = {
   label: 'Imbach et al. 2022',
   url: 'https://doi.org/10.1038/s41598-022-05392-8',
@@ -133,15 +141,46 @@ export const METRIC_REGISTRY = {
   },
   criticalSpeed: {
     verdict: 'estimate',
-    formula: 'distance = D′ + CS × t (2-20 min)',
+    formula:
+      'distance = D′ + CS × t (fastest grade adjusted 400 m, 800 m, 5 km)',
     sources: [
-      {
-        label: 'Smyth & Muniz-Pumares 2020',
-        url: 'https://doi.org/10.1249/MSS.0000000000002412',
-      },
+      SMYTH_MUNIZ_PUMARES,
       {
         label: 'Jones et al. 2010',
         url: 'https://doi.org/10.1249/MSS.0b013e3181d9cf7f',
+      },
+    ],
+  },
+  speedProfile: {
+    verdict: 'estimate',
+    formula: 'z = (D′ - 136 m) / 39 m; speed z > 1, endurance z < -1',
+    sources: [SMYTH_MUNIZ_PUMARES, SANDFORD],
+  },
+  trainingFocus: {
+    verdict: 'estimate',
+    formula:
+      'drift ≥ 5% → long runs; z > 1 → threshold; z < -1 → short intervals',
+    sources: [
+      SANDFORD,
+      {
+        label: 'Smyth et al. 2022',
+        url: 'https://doi.org/10.1007/s40279-022-01680-5',
+      },
+    ],
+  },
+  marathonStart: {
+    verdict: 'estimate',
+    formula: 'start ≤ 0.94 × CS',
+    sources: [SMYTH_MUNIZ_PUMARES],
+  },
+  reserveBalance: {
+    verdict: 'estimate',
+    formula:
+      'above CP: W′bal - (P - CP) × dt; below: W′bal + (CP - P) × (1 - W′bal / W′) × dt',
+    sources: [
+      {
+        label: 'Skiba et al. 2015',
+        url: 'https://pubmed.ncbi.nlm.nih.gov/25425258/',
       },
     ],
   },

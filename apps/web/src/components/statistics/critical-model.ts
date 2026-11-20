@@ -1,95 +1,74 @@
-import { BestRecordDto, RECORD_TYPE, SPORT_TYPE } from '@openathlete/shared';
+import {
+  BestRecordDto,
+  CriticalModel,
+  RECORD_TYPE,
+  SPORT_TYPE,
+  criticalPowerEfforts,
+  criticalSpeedEfforts,
+  fitCriticalPower,
+  fitCriticalSpeed,
+  isReliableSpeedModel,
+} from '@openathlete/shared';
 
-/** The hyperbolic model holds for efforts of a few minutes to about twenty */
-const MIN_EFFORT_SECONDS = 120;
-const MAX_EFFORT_SECONDS = 1200;
-const MIN_EFFORTS = 3;
-
-/** Two-sided 95% Student's t, by degrees of freedom */
-const T_95 = [12.71, 4.3, 3.18, 2.78, 2.57, 2.45, 2.36, 2.31, 2.26, 2.23];
-
+const RUNNING = new Set([SPORT_TYPE.RUNNING, SPORT_TYPE.TRAIL_RUNNING]);
 const CYCLING = new Set([
   SPORT_TYPE.CYCLING,
   SPORT_TYPE.GRAVEL_RIDE,
   SPORT_TYPE.MOUNTAIN_BIKE_RIDE,
 ]);
 
-export interface CriticalFit {
+export interface CriticalFit extends CriticalModel {
   kind: 'speed' | 'power';
-  /** m/s or watts */
-  critical: number;
-  /** Half width of the 95% interval, same unit */
-  margin: number;
-  /** Metres or joules above it */
-  reserve: number;
-  efforts: { seconds: number; work: number }[];
+  /** The bests it was read from: metres for speed, seconds for power */
+  efforts: { distance: number | null; seconds: number }[];
 }
 
 /**
- * Critical speed or power from an athlete's best efforts: work = reserve +
- * critical × time, fitted by least squares. Only running and cycling, the
- * sports it was tested in with this kind of data. Null without enough efforts.
- *
- * The efforts are bests from training, not maximal tests: the result is at
- * most what they show, and the interval says how well they agree.
+ * Critical speed or power from an athlete's best efforts, by the models of
+ * performance-model.ts: speed from the fastest grade-adjusted 400 m, 800 m
+ * and 5 km, which carries it to trails, and power from the bests of 2 to 20
+ * minutes. Only running and cycling, the sports they were tested in with
+ * this kind of data. Null without the efforts, or when the short ones were
+ * not all out.
  */
 export function criticalFit(
   records: BestRecordDto[],
   sport: SPORT_TYPE,
 ): CriticalFit | null {
-  const kind =
-    sport === SPORT_TYPE.RUNNING
-      ? 'speed'
-      : CYCLING.has(sport)
-        ? 'power'
-        : null;
-  if (!kind) return null;
-
-  const efforts = records.flatMap((record) => {
-    if (kind === 'speed') {
-      if (record.type !== RECORD_TYPE.SPEED || !record.distance) return [];
-      return [{ seconds: record.value, work: record.distance }];
+  if (RUNNING.has(sport)) {
+    const efforts = records.flatMap((record) =>
+      record.type === RECORD_TYPE.GAP_SPEED && record.distance
+        ? [{ distance: record.distance, value: record.value }]
+        : [],
+    );
+    const model = fitCriticalSpeed(efforts);
+    if (!model || !isReliableSpeedModel(model)) return null;
+    return {
+      kind: 'speed',
+      ...model,
+      efforts: criticalSpeedEfforts(efforts).map(({ distance, value }) => ({
+        distance,
+        seconds: value,
+      })),
+    };
+  }
+  if (!CYCLING.has(sport)) return null;
+  const efforts = records.flatMap((record) =>
+    record.type === RECORD_TYPE.POWER && record.duration
+      ? [{ duration: record.duration, value: record.value }]
+      : [],
+  );
+  const model = fitCriticalPower(efforts);
+  return (
+    model && {
+      kind: 'power',
+      ...model,
+      efforts: criticalPowerEfforts(efforts).map(({ duration }) => ({
+        distance: null,
+        seconds: duration,
+      })),
     }
-    if (record.type !== RECORD_TYPE.POWER || !record.duration) return [];
-    return [{ seconds: record.duration, work: record.value * record.duration }];
-  });
-  const usable = efforts
-    .filter(
-      ({ seconds }) =>
-        seconds >= MIN_EFFORT_SECONDS && seconds <= MAX_EFFORT_SECONDS,
-    )
-    .sort((a, b) => a.seconds - b.seconds);
-  if (usable.length < MIN_EFFORTS) return null;
-
-  const n = usable.length;
-  const meanTime = usable.reduce((sum, e) => sum + e.seconds, 0) / n;
-  const meanWork = usable.reduce((sum, e) => sum + e.work, 0) / n;
-  const spread = usable.reduce(
-    (sum, e) => sum + (e.seconds - meanTime) ** 2,
-    0,
   );
-  if (spread === 0) return null;
-  const critical =
-    usable.reduce(
-      (sum, e) => sum + (e.seconds - meanTime) * (e.work - meanWork),
-      0,
-    ) / spread;
-  const reserve = meanWork - critical * meanTime;
-  if (critical <= 0 || reserve <= 0) return null;
-
-  const residual = usable.reduce(
-    (sum, e) => sum + (e.work - reserve - critical * e.seconds) ** 2,
-    0,
-  );
-  const standardError = Math.sqrt(residual / (n - 2) / spread);
-  const t = T_95[Math.min(n - 3, T_95.length - 1)];
-  return {
-    kind,
-    critical,
-    margin: t * standardError,
-    reserve,
-    efforts: usable,
-  };
 }
 
 /**

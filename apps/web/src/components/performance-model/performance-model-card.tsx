@@ -15,18 +15,18 @@ import {
   modelValueAt,
 } from '@openathlete/shared';
 
-import { formatRecordDistance } from '../records/record-metrics';
+import { MetricInfo } from '../statistics/metric-info';
 import { formatCritical, formatPace, formatReserve } from './model-format';
 
 /**
- * Selfhost: what the running models predict. Race times and the marathon
- * start from critical speed, and the power the critical power model holds
- * over its durations, with the bests each was read from.
+ * The running models in figures: critical speed with its reserve and the
+ * pace a marathon should not start above, and the power the critical power
+ * model holds over its durations. Race times stay with the statistics.
  */
 export function PerformanceModelCard({ athleteId }: { athleteId?: number }) {
   const { data } = useGetPerformanceModelsQuery(athleteId);
   if (!data) return null;
-  const { pace, power, predictions, marathonStartSpeed } = data.running;
+  const { pace, power, marathonStartSpeed } = data.running;
   const paceModel = pace.model?.reliable ? pace.model : null;
   const powerModel = power.model?.reliable ? power.model : null;
   if (!paceModel && !powerModel) return null;
@@ -42,27 +42,22 @@ export function PerformanceModelCard({ athleteId }: { athleteId?: number }) {
       <CardContent className="space-y-4 text-sm">
         {paceModel && (
           <div className="space-y-2">
-            <div className="flex justify-between gap-3 font-medium">
-              <span>{m.performance_critical_pace()}</span>
+            <div className="flex items-center justify-between gap-3 font-medium">
+              <span className="flex items-center gap-1">
+                {m.performance_critical_pace()}
+                <MetricInfo metric="criticalSpeed" />
+              </span>
               <span>
                 {formatCritical('pace', paceModel.critical)} ·{' '}
                 {m.performance_reserve_pace()}{' '}
                 {formatReserve('pace', paceModel.reserve)}
               </span>
             </div>
-            {predictions.map(({ distance, seconds }) => (
-              <div
-                key={distance}
-                className="flex justify-between gap-3 border-b pb-1.5"
-              >
-                <span className="text-muted-foreground">
-                  {formatRecordDistance(distance)}
-                </span>
-                <span className="font-medium">
-                  {formatDuration(Math.round(seconds))}
-                </span>
-              </div>
-            ))}
+            <p className="text-xs text-muted-foreground tabular-nums">
+              {m.statistics_critical_range({
+                range: `${formatPace(paceModel.critical + paceModel.margin)} – ${formatPace(Math.max(paceModel.critical - paceModel.margin, 0.1))}`,
+              })}
+            </p>
             <p className="text-xs text-muted-foreground">
               {m.performance_reference({
                 mean: D_PRIME_REFERENCE.mean,
@@ -70,18 +65,24 @@ export function PerformanceModelCard({ athleteId }: { athleteId?: number }) {
               })}
             </p>
             {marathonStartSpeed && (
-              <p className="text-xs text-muted-foreground">
-                {m.performance_marathon_tip({
-                  pace: formatPace(marathonStartSpeed),
-                })}
-              </p>
+              <div className="flex items-start justify-between gap-2">
+                <p className="text-xs text-muted-foreground">
+                  {m.performance_marathon_tip({
+                    pace: formatPace(marathonStartSpeed),
+                  })}
+                </p>
+                <MetricInfo metric="marathonStart" />
+              </div>
             )}
           </div>
         )}
         {powerModel && (
           <div className="space-y-2">
-            <div className="flex justify-between gap-3 font-medium">
-              <span>{m.performance_critical_power()}</span>
+            <div className="flex items-center justify-between gap-3 font-medium">
+              <span className="flex items-center gap-1">
+                {m.performance_critical_power()}
+                <MetricInfo metric="criticalPower" />
+              </span>
               <span>
                 {formatCritical('power', powerModel.critical)} ·{' '}
                 {m.performance_reserve_power()}{' '}
@@ -103,9 +104,6 @@ export function PerformanceModelCard({ athleteId }: { athleteId?: number }) {
             ))}
           </div>
         )}
-        <p className="text-xs text-muted-foreground">
-          {m.performance_sources()}
-        </p>
       </CardContent>
     </Card>
   );

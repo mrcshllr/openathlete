@@ -31,6 +31,10 @@ const COPY = {
   criticalSwimSpeed: ["statistics_critical_swim", "critical_swim"],
   criticalPower: ["statistics_critical_power", "critical_power"],
   gap: ["gap", "gap"],
+  speedProfile: ["metric_speed_profile_name", "speed_profile"],
+  trainingFocus: ["performance_focus_title", "training_focus"],
+  marathonStart: ["metric_marathon_start_name", "marathon_start"],
+  reserveBalance: ["metric_reserve_balance_name", "reserve_balance"],
 };
 
 const VERDICTS = {

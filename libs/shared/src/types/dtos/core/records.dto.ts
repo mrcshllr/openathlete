@@ -157,6 +157,8 @@ export type ModelPointDto = z.infer<typeof modelPointSchema>;
 export const performanceModelSchema = z.object({
   /** CS in metres per second, or CP in watts */
   critical: z.number(),
+  /** Half width of the 95% interval of the critical value, same unit */
+  margin: z.number(),
   /** D' in metres, or W' in joules */
   reserve: z.number(),
   /**
@@ -174,7 +176,7 @@ export const performanceModelSlotSchema = z.object({
   model: performanceModelSchema.nullable(),
   points: z.array(modelPointSchema),
   /**
-   * SHORT: no best over 400 or 800 m (pace), 2 to 5 minutes (power), or one
+   * SHORT: the 400 or the 800 m best lacking (pace), 2 to 5 minutes (power), or one
    * that was not all out; LONG: none over 5 km, or 10 to 20 minutes
    */
   missing: z.array(z.enum(['SHORT', 'LONG'])),
@@ -208,10 +210,6 @@ export const performanceModelsSchema = z.object({
     durability: z
       .object({ value: z.number(), activities: z.number() })
       .nullable(),
-    /** Race times from the pace model */
-    predictions: z.array(
-      z.object({ distance: z.number(), seconds: z.number() }),
-    ),
     /** Metres per second a marathon should not start above */
     marathonStartSpeed: z.number().nullable(),
   }),

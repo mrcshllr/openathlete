@@ -43,6 +43,18 @@ const run = (week: number): Session[] => [
   },
 ];
 
+/**
+ * Four minutes flat out: critical speed reads the fastest 400 and 800 m
+ * against the 5 km, and shows nothing when the short ones were not faster
+ */
+const fastRun: Session = {
+  sport: 'RUNNING',
+  daysAgo: 2,
+  minutes: 4,
+  speed: 5.2,
+  heartrate: hardHeartrate,
+};
+
 const ride = (week: number): Session[] => [
   {
     sport: 'CYCLING',
@@ -104,7 +116,7 @@ const PROFILES: {
 }[] = [
   {
     name: 'runner',
-    sessions: weeks(6, run),
+    sessions: [...weeks(6, run), fastRun],
     sport: 'RUNNING',
     label: 'Running',
     trends: ['speed', 'gap', 'heartrate', 'verticalSpeed', 'distance'],

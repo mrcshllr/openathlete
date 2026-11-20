@@ -106,6 +106,26 @@ const COPY: Record<
     limits: m.metric_monotony_limits,
   },
   gap: { name: m.gap, what: m.metric_gap_what, limits: m.metric_gap_limits },
+  speedProfile: {
+    name: m.metric_speed_profile_name,
+    what: m.metric_speed_profile_what,
+    limits: m.metric_speed_profile_limits,
+  },
+  trainingFocus: {
+    name: m.performance_focus_title,
+    what: m.metric_training_focus_what,
+    limits: m.metric_training_focus_limits,
+  },
+  marathonStart: {
+    name: m.metric_marathon_start_name,
+    what: m.metric_marathon_start_what,
+    limits: m.metric_marathon_start_limits,
+  },
+  reserveBalance: {
+    name: m.metric_reserve_balance_name,
+    what: m.metric_reserve_balance_what,
+    limits: m.metric_reserve_balance_limits,
+  },
 };
 
 interface P {

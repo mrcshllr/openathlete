@@ -47,7 +47,6 @@ import {
   missingSpeedEfforts,
   modelFtp,
   profilePosition,
-  racePredictions,
   runEnergyPerMetre,
   trainingFocusOf,
 } from '@openathlete/shared';
@@ -83,7 +82,8 @@ const notExcluded = Prisma.sql`NOT EXISTS (
       OR x.distance = r.distance OR x.duration = r.duration))))`;
 
 // Pace records hold a time: lower is better
-const bestFirst = Prisma.sql`CASE WHEN r.type = 'SPEED' THEN r.value ELSE -r.value END`;
+// Seconds over a distance: the least is the best. Everything else, the most
+const bestFirst = Prisma.sql`CASE WHEN r.type IN ('SPEED', 'GAP_SPEED') THEN r.value ELSE -r.value END`;
 
 const toBestRecord = (row: BestRecordRow): BestRecordDto => ({
   recordId: row.record_id,
@@ -424,7 +424,6 @@ export class RecordService {
         },
         focus: trusted && trainingFocusOf(trusted, durability?.value ?? null),
         durability,
-        predictions: trusted ? racePredictions(trusted) : [],
         marathonStartSpeed: trusted
           ? trusted.critical * MARATHON_START_SHARE
           : null,

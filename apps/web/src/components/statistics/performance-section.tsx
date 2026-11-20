@@ -85,7 +85,11 @@ function CriticalCard({ fit, sport }: { fit: CriticalFit; sport: SPORT_TYPE }) {
           {m.statistics_critical_efforts({
             count: fit.efforts.length,
             efforts: fit.efforts
-              .map(({ seconds }) => formatRecordDuration(Math.round(seconds)))
+              .map(({ distance, seconds }) =>
+                distance
+                  ? formatRecordDistance(distance)
+                  : formatRecordDuration(Math.round(seconds)),
+              )
               .join(', '),
           })}
         </p>

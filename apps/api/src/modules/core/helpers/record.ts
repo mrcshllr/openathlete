@@ -505,8 +505,13 @@ export const computeRecords = (
     ...(altitude?.length
       ? computeElevationGainRecords(time, cumulativeDistances, altitude)
       : []),
-    ...(altitude?.length && sport && GAP_SPEED_SPORTS.has(sport)
-      ? computeGapSpeedRecords(time, cumulativeDistances, altitude)
+    // Without an altitude the ground counts as flat: the real pace
+    ...(sport && GAP_SPEED_SPORTS.has(sport)
+      ? computeGapSpeedRecords(
+          time,
+          cumulativeDistances,
+          altitude?.length ? altitude : time.map(() => 0),
+        )
       : []),
     ...records,
   ];

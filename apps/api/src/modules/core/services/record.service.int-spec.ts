@@ -115,6 +115,28 @@ describe('RecordService (PostgreSQL)', () => {
     });
   });
 
+  it('takes the least grade-adjusted time over a distance as the best', async () => {
+    await prisma.record.deleteMany();
+    for (const [value, date] of [
+      [95, '2026-11-04'],
+      [82, '2026-11-05'],
+      [90, '2026-11-06'],
+    ] as const) {
+      await prisma.record.create({
+        data: {
+          type: 'GAP_SPEED',
+          distance: 400,
+          value,
+          date: new Date(date),
+          athleteId: DELETED_ATHLETE_ID,
+          eventActivityId: 3501,
+        },
+      });
+    }
+    const [best] = await service.getRecords(athlete, { sport: 'RUNNING' });
+    expect(best).toMatchObject({ type: 'GAP_SPEED', distance: 400, value: 82 });
+  });
+
   it('lists the sports with records, the most frequent first', async () => {
     // Two rides next to the fixture's run
     for (const id of [1, 2]) {
@@ -267,15 +289,8 @@ describe('RecordService (PostgreSQL)', () => {
         expect(running.focus).toBe('BALANCED');
         expect(running.power.model?.critical).toBeCloseTo(300, 6);
         expect(running.power.model?.reserve).toBeCloseTo(18000, 2);
-        // 5 km as the model was fitted to it; the marathon at 84.8% of CS
-        expect(running.predictions[0]).toEqual({
-          distance: 5000,
-          seconds: expect.closeTo(1216, 4),
-        });
-        expect(running.predictions[3].seconds).toBeCloseTo(
-          42195 / (4 * 0.848),
-          4,
-        );
+        // Bests exactly on the line: no doubt about it
+        expect(running.pace.model?.margin).toBeCloseTo(0, 6);
         expect(running.marathonStartSpeed).toBeCloseTo(3.76, 6);
         // No ride, no steady run of an hour
         expect(cycling.power).toEqual({
@@ -302,7 +317,6 @@ describe('RecordService (PostgreSQL)', () => {
         expect(running.pace.missing).toEqual(['SHORT']);
         expect(running.profile).toBeNull();
         expect(running.focus).toBeNull();
-        expect(running.predictions).toEqual([]);
       });
 
       it('names the side the profile is short of', async () => {

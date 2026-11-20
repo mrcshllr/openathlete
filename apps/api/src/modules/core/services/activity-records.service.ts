@@ -12,9 +12,9 @@ import { isPlausibleRecord } from '../helpers/record-plausibility';
  * Bump when computeRecords changes: activities computed with an older
  * version are recomputed in the background (RecordsBackfillService).
  */
-// Selfhost: 9. This instance computed 5 to 8 with earlier climbing speed
+// Selfhost: 10. This instance computed 5 to 9 with earlier climbing speed
 // and grade-adjusted pace rules; main's own bumps start from 3
-export const RECORDS_VERSION = 9;
+export const RECORDS_VERSION = 10;
 
 @Injectable()
 export class ActivityRecordsService {

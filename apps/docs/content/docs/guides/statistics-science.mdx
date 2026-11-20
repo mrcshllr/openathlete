@@ -136,15 +136,63 @@ distance > 1.1 × longest (30 d)
 
 ## Critical speed
 
-**Estimate.** The speed your best efforts of 2 to 20 minutes point to, fitted as distance = reserve + speed × time. It sits near the limit of what you can sustain.
+**Estimate.** The speed your fastest 400 m, 800 m and 5 km point to, fitted as distance = reserve + speed × time on grade-adjusted pace. It sits near the limit of what you can sustain.
 
 ```text
-distance = D′ + CS × t (2-20 min)
+distance = D′ + CS × t (fastest grade adjusted 400 m, 800 m, 5 km)
 ```
 
-**Limits:** These are bests from training, not maximal tests, so it can read low: on real races the method predicted the marathon within about 8%. Not tested on trails, so not shown there.
+**Limits:** These are bests from training, not maximal tests: when the short ones were not all out, nothing is shown. On real races the method predicted the marathon within about 8%. Grade adjustment knows nothing of technical terrain, so it is less reliable on trails.
 
 **Sources:** [Smyth & Muniz-Pumares 2020](https://doi.org/10.1249/MSS.0000000000002412), [Jones et al. 2010](https://doi.org/10.1249/MSS.0b013e3181d9cf7f)
+
+## Speed or endurance type
+
+**Estimate.** Where your reserve above critical speed (D′) stands among 25,000 recreational marathon runners: clearly larger is a speed type, clearly smaller an endurance type.
+
+```text
+z = (D′ - 136 m) / 39 m; speed z > 1, endurance z < -1
+```
+
+**Limits:** The reference is a single group of marathon runners, and a short best that was not all out reads as a small reserve. The limits, one standard deviation either side, are a convention.
+
+**Sources:** [Smyth & Muniz-Pumares 2020](https://doi.org/10.1249/MSS.0000000000002412), [Sandford et al. 2021](https://doi.org/10.1007/s40279-021-01523-9)
+
+## Training focus
+
+**Estimate.** What the profile is short of: endurance first when heart rate drifts on long, steady runs, else the threshold for a large reserve, and the reserve for a small one.
+
+```text
+drift ≥ 5% → long runs; z > 1 → threshold; z < -1 → short intervals
+```
+
+**Limits:** The advice to train the weaker side of a profile is expert opinion, not the result of a trial, and the 5% drift limit is a convention without solid basis. A direction, not a plan.
+
+**Sources:** [Sandford et al. 2021](https://doi.org/10.1007/s40279-021-01523-9), [Smyth et al. 2022](https://doi.org/10.1007/s40279-022-01680-5)
+
+## Marathon start pace
+
+**Estimate.** The pace not to exceed in the first half of a marathon: 94% of critical speed.
+
+```text
+start ≤ 0.94 × CS
+```
+
+**Limits:** Observed on recreational marathon runners: those who started faster more often slowed down by a quarter or more. It is a ceiling, not a target pace, and says nothing of hills, heat or fuelling.
+
+**Sources:** [Smyth & Muniz-Pumares 2020](https://doi.org/10.1249/MSS.0000000000002412)
+
+## Reserve during the effort (W′bal)
+
+**Estimate.** How far the effort emptied the reserve above critical power or critical speed, and how it refilled in the recoveries.
+
+```text
+above CP: W′bal - (P - CP) × dt; below: W′bal + (CP - P) × (1 - W′bal / W′) × dt
+```
+
+**Limits:** The model was built and tested on cycling power; on running pace it is an extrapolation. It uses today's critical value for older activities too, and the recovery rate differs between athletes.
+
+**Sources:** [Skiba et al. 2015](https://pubmed.ncbi.nlm.nih.gov/25425258/)
 
 ## Heart rate by output
 

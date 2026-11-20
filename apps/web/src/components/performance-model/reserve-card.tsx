@@ -10,6 +10,7 @@ import {
   reserveBalance,
 } from '@openathlete/shared';
 
+import { MetricInfo } from '../statistics/metric-info';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Measure, formatCritical, formatPercent } from './model-format';
 
@@ -32,7 +33,7 @@ interface P {
 }
 
 /**
- * Selfhost: how far the effort emptied the reserve above critical power or
+ * How far the effort emptied the reserve above critical power or
  * critical speed, and how it came back in the recoveries (W'bal, Skiba
  * 2015), with the athlete's model of today.
  */
@@ -104,12 +105,13 @@ export function ReserveCard({ stream, sport, athleteId }: P) {
 
   return (
     <Card data-reserve-card>
-      <CardHeader>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0">
         <CardTitle>
           {result.measure === 'pace'
             ? m.performance_reserve_card_pace()
             : m.performance_reserve_card_power()}
         </CardTitle>
+        <MetricInfo metric="reserveBalance" />
       </CardHeader>
       <CardContent className="space-y-3">
         <svg

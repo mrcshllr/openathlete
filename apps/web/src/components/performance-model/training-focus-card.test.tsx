@@ -45,7 +45,7 @@ const slot = (
   missing: ('SHORT' | 'LONG')[] = [],
   pace = true,
 ) => ({
-  model,
+  model: model && { ...model, margin: 0 },
   points: model
     ? pace
       ? [point(800, null), point(5000, null)]
@@ -66,7 +66,6 @@ const models = (
     profile: focus ? { type: 'SPEED', position: 0.8 } : null,
     focus,
     durability: { value: 4.1, activities: 3 },
-    predictions: [],
     marathonStartSpeed: null,
   },
   cycling: { power: slot(null, ['SHORT', 'LONG']) },

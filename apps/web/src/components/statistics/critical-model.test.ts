@@ -16,7 +16,7 @@ const base = {
 };
 const run = (distance: number, seconds: number): BestRecordDto => ({
   ...base,
-  type: RECORD_TYPE.SPEED,
+  type: RECORD_TYPE.GAP_SPEED,
   distance,
   duration: null,
   value: seconds,
@@ -29,9 +29,9 @@ const power = (duration: number, watts: number): BestRecordDto => ({
   value: watts,
 });
 
-/** Efforts exactly on a speed of 4 m/s with 200 m above it */
-const perfect = [1000, 1500, 3000, 5000].map((distance) =>
-  run(distance, (distance - 200) / 4),
+/** Grade-adjusted bests exactly on a speed of 4 m/s with 140 m above it */
+const perfect = [400, 800, 5000].map((distance) =>
+  run(distance, (distance - 140) / 4),
 );
 
 describe('criticalFit', () => {
@@ -39,13 +39,16 @@ describe('criticalFit', () => {
     const fit = criticalFit(perfect, SPORT_TYPE.RUNNING)!;
     expect(fit.kind).toBe('speed');
     expect(fit.critical).toBeCloseTo(4, 5);
-    expect(fit.reserve).toBeCloseTo(200, 3);
+    expect(fit.reserve).toBeCloseTo(140, 3);
     expect(fit.margin).toBeCloseTo(0, 5);
+    expect(fit.efforts.map(({ distance }) => distance)).toEqual([
+      400, 800, 5000,
+    ]);
   });
 
   it('widens the interval when efforts disagree', () => {
     const fit = criticalFit(
-      [run(1000, 200), run(1500, 330), run(3000, 700), run(5000, 1190)],
+      [run(400, 62), run(800, 180), run(5000, 1215)],
       SPORT_TYPE.RUNNING,
     )!;
     expect(fit.margin).toBeGreaterThan(0.01);
@@ -61,20 +64,34 @@ describe('criticalFit', () => {
     expect(fit.reserve).toBeCloseTo(20000, 2);
   });
 
-  it('leaves out efforts outside the model', () => {
+  it('reads the grade-adjusted bests of its three distances only', () => {
     const fit = criticalFit(
-      [run(400, 60), ...perfect, run(21097.5, 6000)],
+      [
+        ...perfect,
+        run(1000, 100),
+        { ...run(400, 30), type: RECORD_TYPE.SPEED },
+      ],
       SPORT_TYPE.RUNNING,
     )!;
-    expect(fit.efforts).toHaveLength(4);
+    expect(fit.efforts).toHaveLength(3);
+    expect(fit.critical).toBeCloseTo(4, 5);
   });
 
   it('needs three efforts', () => {
-    expect(criticalFit(perfect.slice(0, 2), SPORT_TYPE.RUNNING)).toBeNull();
+    expect(criticalFit(perfect.slice(1), SPORT_TYPE.RUNNING)).toBeNull();
   });
 
-  it('stays out of the sports it was not tested in', () => {
-    expect(criticalFit(perfect, SPORT_TYPE.TRAIL_RUNNING)).toBeNull();
+  it('gives nothing when the short bests were not all out', () => {
+    const easy = [400, 800, 5000].map((distance) =>
+      run(distance, (distance - 30) / 4),
+    );
+    expect(criticalFit(easy, SPORT_TYPE.RUNNING)).toBeNull();
+  });
+
+  it('holds on trails, and stays out of the sports it was not tested in', () => {
+    expect(
+      criticalFit(perfect, SPORT_TYPE.TRAIL_RUNNING)?.critical,
+    ).toBeCloseTo(4, 5);
     expect(criticalFit(perfect, SPORT_TYPE.SWIMMING)).toBeNull();
   });
 });

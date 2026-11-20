@@ -20,6 +20,7 @@ import {
 } from '@openathlete/shared';
 
 import { GarminAttribution } from '../garmin-attribution/garmin-attribution';
+import { MetricInfo } from '../statistics/metric-info';
 import { Button } from '../ui/button';
 import { SectionLabel } from '../ui/section-label';
 import { Skeleton } from '../ui/skeleton';
@@ -106,10 +107,13 @@ function Profile({
   const left = `${(1 - profile.position) * 100}%`;
   return (
     <div className="space-y-1.5">
-      <div className="flex justify-between text-xs text-muted-foreground">
+      <div className="flex items-center justify-between text-xs text-muted-foreground">
         <span>{m.performance_profile_speed()}</span>
         <span>{m.performance_profile_hybrid()}</span>
-        <span>{m.performance_profile_endurance()}</span>
+        <span className="flex items-center gap-1">
+          {m.performance_profile_endurance()}
+          <MetricInfo metric="speedProfile" />
+        </span>
       </div>
       <div
         className="relative h-2 rounded-full bg-muted"
@@ -366,7 +370,10 @@ export function TrainingFocusCard({ athleteId }: { athleteId?: number }) {
   return (
     <div className="space-y-3 rounded-md border p-3" data-training-focus>
       <div className="flex items-center justify-between gap-3">
-        <SectionLabel>{m.performance_focus_title()}</SectionLabel>
+        <span className="flex items-center gap-1">
+          <SectionLabel>{m.performance_focus_title()}</SectionLabel>
+          <MetricInfo metric="trainingFocus" />
+        </span>
         {focus && <MeasureSwitch measure={measure} onChange={setChosen} />}
       </div>
       {focus && profile ? (
