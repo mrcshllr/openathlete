@@ -3274,5 +3274,10 @@
   "metric_marathon_start_limits": "Osservato su maratoneti amatoriali: chi partiva più forte rallentava più spesso di un quarto o più. È un tetto, non un passo obiettivo, e non dice nulla di dislivello, caldo o alimentazione.",
   "metric_reserve_balance_name": "Riserva durante lo sforzo (W′bal)",
   "metric_reserve_balance_what": "Quanto lo sforzo ha svuotato la riserva sopra la potenza critica o la velocità critica, e come si è ricostituita nei recuperi.",
-  "metric_reserve_balance_limits": "Il modello è stato costruito sulla potenza in bici. Nella corsa ha seguito il tempo all'esaurimento di sedute di ripetute in piano, ma il valore finale era impreciso nelle sedute esaustive, perché la velocità di recupero varia da atleta ad atleta. Il valore critico di oggi è usato anche per le attività passate."
+  "metric_reserve_balance_limits": "Il modello è stato costruito sulla potenza in bici. Nella corsa ha seguito il tempo all'esaurimento di sedute di ripetute in piano, ma il valore finale era impreciso nelle sedute esaustive, perché la velocità di recupero varia da atleta ad atleta. Il valore critico di oggi è usato anche per le attività passate.",
+  "records_power_zones": "Zone di potenza",
+  "records_heartrate_zones": "Zone di frequenza cardiaca",
+  "records_zones_help": "Le tue zone di allenamento per questo sport. Modificale nelle zone di allenamento.",
+  "records_zones_empty": "Non ci sono ancora zone di questo tipo per questo sport. Aggiungile nelle zone di allenamento.",
+  "records_zones_default": "Zone predefinite, uguali per tutti. Imposta le tue nelle zone di allenamento."
 }

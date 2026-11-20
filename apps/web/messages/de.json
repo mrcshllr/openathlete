@@ -3274,5 +3274,10 @@
   "metric_marathon_start_limits": "Beobachtet an Freizeit-Marathonläufern: Wer schneller startete, wurde häufiger um ein Viertel oder mehr langsamer. Es ist eine Obergrenze, keine Zielpace, und sagt nichts über Höhenmeter, Hitze oder Verpflegung.",
   "metric_reserve_balance_name": "Reserve im Verlauf (W′bal)",
   "metric_reserve_balance_what": "Wie weit die Belastung die Reserve über der kritischen Leistung oder der kritischen Pace geleert hat und wie sie sich in den Erholungen wieder gefüllt hat.",
-  "metric_reserve_balance_limits": "Das Modell wurde mit Radleistung entwickelt. Beim Laufen bildete es die Zeit bis zur Erschöpfung von Intervalleinheiten auf flachem Grund ab, sein Endwert war bei erschöpfenden Einheiten aber ungenau, weil die Erholungsrate von Mensch zu Mensch verschieden ist. Auch ältere Aktivitäten werden mit dem heutigen kritischen Wert gerechnet."
+  "metric_reserve_balance_limits": "Das Modell wurde mit Radleistung entwickelt. Beim Laufen bildete es die Zeit bis zur Erschöpfung von Intervalleinheiten auf flachem Grund ab, sein Endwert war bei erschöpfenden Einheiten aber ungenau, weil die Erholungsrate von Mensch zu Mensch verschieden ist. Auch ältere Aktivitäten werden mit dem heutigen kritischen Wert gerechnet.",
+  "records_power_zones": "Leistungszonen",
+  "records_heartrate_zones": "Herzfrequenzzonen",
+  "records_zones_help": "Deine Trainingszonen für diese Sportart. Ändern kannst du sie unter Trainingszonen.",
+  "records_zones_empty": "Für diese Sportart gibt es noch keine Zonen dieser Art. Lege sie unter Trainingszonen an.",
+  "records_zones_default": "Standardzonen, für alle gleich. Lege deine eigenen unter Trainingszonen fest."
 }

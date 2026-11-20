@@ -3274,5 +3274,10 @@
   "metric_marathon_start_limits": "Observado em maratonistas amadores: quem largava mais rápido desacelerava com mais frequência um quarto ou mais. É um teto, não um ritmo-alvo, e não diz nada sobre altimetria, calor ou alimentação.",
   "metric_reserve_balance_name": "Reserva durante o esforço (W′bal)",
   "metric_reserve_balance_what": "Até onde o esforço esvaziou a reserva acima da potência crítica ou da velocidade crítica, e como ela se recompôs nas recuperações.",
-  "metric_reserve_balance_limits": "O modelo foi construído com potência no ciclismo. Na corrida, acompanhou o tempo até a exaustão de sessões intervaladas no plano, mas o valor final foi impreciso nas sessões exaustivas, porque a velocidade de recuperação varia entre atletas. O valor crítico de hoje é usado também para atividades antigas."
+  "metric_reserve_balance_limits": "O modelo foi construído com potência no ciclismo. Na corrida, acompanhou o tempo até a exaustão de sessões intervaladas no plano, mas o valor final foi impreciso nas sessões exaustivas, porque a velocidade de recuperação varia entre atletas. O valor crítico de hoje é usado também para atividades antigas.",
+  "records_power_zones": "Zonas de potência",
+  "records_heartrate_zones": "Zonas de frequência cardíaca",
+  "records_zones_help": "Suas zonas de treino para este esporte. Altere-as nas zonas de treino.",
+  "records_zones_empty": "Ainda não há zonas deste tipo para este esporte. Adicione-as nas zonas de treino.",
+  "records_zones_default": "Zonas padrão, iguais para todos. Defina as suas nas zonas de treino."
 }

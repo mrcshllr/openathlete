@@ -3274,5 +3274,10 @@
   "metric_marathon_start_limits": "Observé chez des marathoniens amateurs : ceux qui partaient plus vite ralentissaient plus souvent d'un quart ou plus. C'est un plafond, pas une allure cible, et il ne dit rien du dénivelé, de la chaleur ni du ravitaillement.",
   "metric_reserve_balance_name": "Réserve pendant l'effort (W′bal)",
   "metric_reserve_balance_what": "Jusqu'où l'effort a vidé la réserve au-dessus de la puissance critique ou de la vitesse critique, et comment elle s'est reconstituée pendant les récupérations.",
-  "metric_reserve_balance_limits": "Le modèle a été construit sur la puissance à vélo. En course, il a suivi le temps jusqu'à l'épuisement de séances d'intervalles sur terrain plat, mais sa valeur finale était inexacte pour les séances épuisantes, car la vitesse de récupération varie d'un athlète à l'autre. La valeur critique d'aujourd'hui sert aussi pour les activités anciennes."
+  "metric_reserve_balance_limits": "Le modèle a été construit sur la puissance à vélo. En course, il a suivi le temps jusqu'à l'épuisement de séances d'intervalles sur terrain plat, mais sa valeur finale était inexacte pour les séances épuisantes, car la vitesse de récupération varie d'un athlète à l'autre. La valeur critique d'aujourd'hui sert aussi pour les activités anciennes.",
+  "records_power_zones": "Zones de puissance",
+  "records_heartrate_zones": "Zones de fréquence cardiaque",
+  "records_zones_help": "Vos zones d'entraînement pour ce sport. Modifiez-les dans les zones d'entraînement.",
+  "records_zones_empty": "Pas encore de zones de ce type pour ce sport. Ajoutez-les dans les zones d'entraînement.",
+  "records_zones_default": "Zones par défaut, les mêmes pour tous. Définissez les vôtres dans les zones d'entraînement."
 }

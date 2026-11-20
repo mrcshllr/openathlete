@@ -3274,5 +3274,10 @@
   "metric_marathon_start_limits": "Observed on recreational marathon runners: those who started faster more often slowed down by a quarter or more. It is a ceiling, not a target pace, and says nothing of hills, heat or fuelling.",
   "metric_reserve_balance_name": "Reserve during the effort (W′bal)",
   "metric_reserve_balance_what": "How far the effort emptied the reserve above critical power or critical speed, and how it refilled in the recoveries.",
-  "metric_reserve_balance_limits": "The model was built on cycling power. On running it tracked the time to exhaustion of interval sessions on flat ground, but its end value was inaccurate in exhaustive sessions, as the recovery rate differs between athletes. Today's critical value is used for older activities too."
+  "metric_reserve_balance_limits": "The model was built on cycling power. On running it tracked the time to exhaustion of interval sessions on flat ground, but its end value was inaccurate in exhaustive sessions, as the recovery rate differs between athletes. Today's critical value is used for older activities too.",
+  "records_power_zones": "Power zones",
+  "records_heartrate_zones": "Heart rate zones",
+  "records_zones_help": "Your training zones for this sport. Change them under training zones.",
+  "records_zones_empty": "No zones of this kind for this sport yet. Add them under training zones.",
+  "records_zones_default": "Default zones, the same for everyone. Set your own under training zones."
 }

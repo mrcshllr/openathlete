@@ -34,6 +34,7 @@ import {
 import { RecordsSummary } from '@/components/records/records-summary';
 import { RecordsYearsTable } from '@/components/records/records-years-table';
 import { TrainingPacesCard } from '@/components/records/training-paces-card';
+import { TrainingZonesCard } from '@/components/records/training-zones-card';
 import { useDismissedSuspects } from '@/components/records/use-dismissed-suspects';
 import { SportSelect } from '@/components/sport-select/sport-select';
 import { Card, CardContent } from '@/components/ui/card';
@@ -54,6 +55,7 @@ import {
   CreateRecordExclusionDto,
   RECORD_TYPE,
   SPORT_TYPE,
+  TRAINING_ZONE_TYPE,
 } from '@openathlete/shared';
 
 interface P {
@@ -407,9 +409,24 @@ export function RecordsView({ athleteId }: P) {
               </p>
             </Card>
             <div className="grid min-w-0 grid-cols-1 md:grid-cols-2 xl:grid-cols-1 gap-4">
-              {sport === SPORT_TYPE.RUNNING && (
-                // This season says more of the current level than an old best
-                <TrainingPacesCard recordSets={[seasonRecords, records]} />
+              {/* The zones of the measure shown: paces by default for runs */}
+              {metric.type === RECORD_TYPE.POWER ? (
+                <TrainingZonesCard
+                  type={TRAINING_ZONE_TYPE.POWER}
+                  sport={sport}
+                  athleteId={athleteId}
+                />
+              ) : metric.type === RECORD_TYPE.HEARTRATE ? (
+                <TrainingZonesCard
+                  type={TRAINING_ZONE_TYPE.HEARTRATE}
+                  sport={sport}
+                  athleteId={athleteId}
+                />
+              ) : (
+                sport === SPORT_TYPE.RUNNING && (
+                  // This season says more of the current level than an old best
+                  <TrainingPacesCard recordSets={[seasonRecords, records]} />
+                )
               )}
               {(sport === SPORT_TYPE.RUNNING ||
                 sport === SPORT_TYPE.TRAIL_RUNNING) && (
