@@ -3266,13 +3266,13 @@
   "performance_reference": "For comparison: D′ was {mean} ± {sd} m among the 25,000 recreational runners of that study.",
   "metric_speed_profile_name": "Speed or endurance type",
   "metric_speed_profile_what": "Where your reserve above critical speed (D′) stands among 25,000 recreational marathon runners: clearly larger is a speed type, clearly smaller an endurance type.",
-  "metric_speed_profile_limits": "The reference is a single group of marathon runners, and a short best that was not all out reads as a small reserve. The limits, one standard deviation either side, are a convention.",
-  "metric_training_focus_what": "What the profile is short of: endurance first when heart rate drifts on long, steady runs, else the threshold for a large reserve, and the reserve for a small one.",
-  "metric_training_focus_limits": "The advice to train the weaker side of a profile is expert opinion, not the result of a trial, and the 5% drift limit is a convention without solid basis. A direction, not a plan.",
+  "metric_speed_profile_limits": "The reference is a single group of marathon runners, and a short best that was not all out reads as a small reserve. The limits, one standard deviation either side, are a convention. It is not the sprint reserve (sprint speed against aerobic speed) other profiles are built on.",
+  "metric_training_focus_what": "What the profile is short of, and the training shown to raise it: endurance first when heart rate drifts on long, steady runs; else endurance and threshold work for a large reserve over a comparatively low critical speed, and short, hard intervals for a small reserve.",
+  "metric_training_focus_limits": "That endurance training raises the critical value and hard intervals raise the reserve was shown on the cycle ergometer, and is carried over to running here. A training study on runners points the same way, but it typed them by sprint speed against aerobic speed, not by this reserve. The 5% drift limit is a convention without solid basis. A direction, not a plan.",
   "metric_marathon_start_name": "Marathon start pace",
   "metric_marathon_start_what": "The pace not to exceed in the first half of a marathon: 94% of critical speed.",
   "metric_marathon_start_limits": "Observed on recreational marathon runners: those who started faster more often slowed down by a quarter or more. It is a ceiling, not a target pace, and says nothing of hills, heat or fuelling.",
   "metric_reserve_balance_name": "Reserve during the effort (W′bal)",
   "metric_reserve_balance_what": "How far the effort emptied the reserve above critical power or critical speed, and how it refilled in the recoveries.",
-  "metric_reserve_balance_limits": "The model was built and tested on cycling power; on running pace it is an extrapolation. It uses today's critical value for older activities too, and the recovery rate differs between athletes."
+  "metric_reserve_balance_limits": "The model was built on cycling power. On running it tracked the time to exhaustion of interval sessions on flat ground, but its end value was inaccurate in exhaustive sessions, as the recovery rate differs between athletes. Today's critical value is used for older activities too."
 }

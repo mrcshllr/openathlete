@@ -20,14 +20,31 @@
  *   above 94% of CS went with slowing down by over 25% in the second.
  * - Skiba PF, Fulford J, Clarke DC, Vanhatalo A, Jones AM. Intramuscular
  *   determinants of the ability to recover work capacity above critical
- *   power. Eur J Appl Physiol 2015;115(4):703-713: the balance of W' during
- *   an effort (W'bal), spent above CP and recovered below it.
+ *   power. Eur J Appl Physiol 2015;115(4):703-713,
+ *   doi:10.1007/s00421-014-3050-3: the balance of W' during an effort
+ *   (W'bal), spent above CP and recovered below it. On running it
+ *   tracked interval sessions to exhaustion on the flat (Vassallo et al.
+ *   2020, doi:10.1007/s00421-019-04266-8), with an end value that was off in
+ *   exhaustive sessions (Bellenger et al. 2025, doi:10.1123/ijspp.2024-0036).
+ * - Jenkins DG, Quigley BM. Endurance training enhances critical power. Med
+ *   Sci Sports Exerc 1992;24:1283-1289; and The influence of
+ *   high-intensity exercise training on the Wlim-Tlim relationship. Med Sci
+ *   Sports Exerc 1993;25:275-282. Eight weeks of endurance training
+ *   raised critical power; eight weeks of hard intervals raised the reserve
+ *   and left critical power where it was. On the cycle ergometer: the
+ *   ground the focus stands on, carried over to running.
  * - Sandford GN, Laursen PB, Buchheit M. Anaerobic speed/power reserve and
- *   sport performance. Sports Med 2021;51(10):2017-2028: profile athletes
- *   between speed and endurance, and tailor the training to the profile.
+ *   sport performance. Sports Med 2021;51(10):2017-2028,
+ *   doi:10.1007/s40279-021-01523-9: profile athletes between speed and
+ *   endurance, and tailor the training to the profile. Thron et al. (Int J
+ *   Sports Physiol Perform 2026;21(2)) found runners to respond by profile.
+ *   Both type athletes by sprint against aerobic speed, not by D': they
+ *   back the principle, not our limits.
  * - Friel J. Aerobic endurance and decoupling (TrainingPeaks): heart rate
  *   drifting under 5% against pace on a steady run shows aerobic endurance
- *   (decouplingLevel).
+ *   (decouplingLevel). Heart rate decoupling tells of durability (Rothschild
+ *   et al. 2025, doi:10.1007/s00421-025-05815-0), but no study sets a limit
+ *   for training runs: the 5% is a convention.
  */
 import { decouplingLevel } from './activity-decoupling';
 

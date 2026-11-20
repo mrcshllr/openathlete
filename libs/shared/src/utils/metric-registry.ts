@@ -161,10 +161,22 @@ export const METRIC_REGISTRY = {
     formula:
       'drift ≥ 5% → long runs; z > 1 → threshold; z < -1 → short intervals',
     sources: [
+      {
+        label: 'Jenkins & Quigley 1992',
+        url: 'https://coachsci.sdsu.edu/csa/vol34/jenkins.htm',
+      },
+      {
+        label: 'Jenkins & Quigley 1993',
+        url: 'https://core.ac.uk/works/6329772',
+      },
+      {
+        label: 'Thron et al. 2026',
+        url: 'https://publikationen.bibliothek.kit.edu/1000190584',
+      },
       SANDFORD,
       {
-        label: 'Smyth et al. 2022',
-        url: 'https://doi.org/10.1007/s40279-022-01680-5',
+        label: 'Rothschild et al. 2025',
+        url: 'https://doi.org/10.1007/s00421-025-05815-0',
       },
     ],
   },
@@ -180,7 +192,15 @@ export const METRIC_REGISTRY = {
     sources: [
       {
         label: 'Skiba et al. 2015',
-        url: 'https://pubmed.ncbi.nlm.nih.gov/25425258/',
+        url: 'https://doi.org/10.1007/s00421-014-3050-3',
+      },
+      {
+        label: 'Vassallo et al. 2020',
+        url: 'https://doi.org/10.1007/s00421-019-04266-8',
+      },
+      {
+        label: 'Bellenger et al. 2025',
+        url: 'https://doi.org/10.1123/ijspp.2024-0036',
       },
     ],
   },

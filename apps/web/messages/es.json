@@ -3266,13 +3266,13 @@
   "performance_reference": "Como referencia: D′ fue de {mean} ± {sd} m entre los 25 000 corredores aficionados de ese estudio.",
   "metric_speed_profile_name": "Tipo velocidad o resistencia",
   "metric_speed_profile_what": "Dónde queda tu reserva por encima de la velocidad crítica (D′) entre 25 000 maratonianos aficionados: claramente mayor es un tipo velocidad, claramente menor un tipo resistencia.",
-  "metric_speed_profile_limits": "La referencia es un solo grupo de maratonianos, y un récord corto que no fue a tope se lee como una reserva pequeña. Los límites, una desviación estándar a cada lado, son una convención.",
-  "metric_training_focus_what": "Lo que le falta al perfil: primero la resistencia cuando el pulso deriva en rodajes largos y regulares; si no, el umbral para una reserva grande y la reserva para una pequeña.",
-  "metric_training_focus_limits": "El consejo de entrenar el lado débil de un perfil es opinión de expertos, no el resultado de un ensayo, y el límite del 5 % de deriva es una convención sin base sólida. Una dirección, no un plan.",
+  "metric_speed_profile_limits": "La referencia es un solo grupo de maratonianos, y un récord corto que no fue a tope se lee como una reserva pequeña. Los límites, una desviación estándar a cada lado, son una convención. No es la reserva de sprint (velocidad de sprint frente a la aeróbica) en la que se basan otros perfiles.",
+  "metric_training_focus_what": "Lo que le falta al perfil, y el entrenamiento que ha demostrado desarrollarlo: primero la resistencia cuando el pulso deriva en rodajes largos y regulares; si no, trabajo de resistencia y de umbral para una reserva grande sobre una velocidad crítica relativamente baja, e intervalos cortos e intensos para una reserva pequeña.",
+  "metric_training_focus_limits": "Que el entrenamiento de resistencia eleva el valor crítico y que los intervalos intensos elevan la reserva se mostró en cicloergómetro, y aquí se traslada a la carrera. Un estudio de entrenamiento con corredores apunta en la misma dirección, pero definió los tipos por la velocidad de sprint frente a la aeróbica, no por esta reserva. El límite del 5 % de deriva es una convención sin base sólida. Una dirección, no un plan.",
   "metric_marathon_start_name": "Ritmo de salida en maratón",
   "metric_marathon_start_what": "El ritmo que no conviene superar en la primera mitad de un maratón: el 94 % de la velocidad crítica.",
   "metric_marathon_start_limits": "Observado en maratonianos aficionados: quienes salían más rápido frenaban con más frecuencia una cuarta parte o más. Es un techo, no un ritmo objetivo, y no dice nada del desnivel, el calor ni la alimentación.",
   "metric_reserve_balance_name": "Reserva durante el esfuerzo (W′bal)",
   "metric_reserve_balance_what": "Hasta dónde vació el esfuerzo la reserva por encima de la potencia crítica o la velocidad crítica, y cómo se rellenó en las recuperaciones.",
-  "metric_reserve_balance_limits": "El modelo se construyó y se probó con potencia en bici; en ritmo de carrera es una extrapolación. Usa el valor crítico de hoy también para actividades antiguas, y la velocidad de recuperación varía entre atletas."
+  "metric_reserve_balance_limits": "El modelo se construyó con potencia en bici. En carrera siguió el tiempo hasta el agotamiento de sesiones de intervalos en llano, pero su valor final fue inexacto en las sesiones agotadoras, porque la velocidad de recuperación varía entre atletas. El valor crítico de hoy se usa también para actividades antiguas."
 }
