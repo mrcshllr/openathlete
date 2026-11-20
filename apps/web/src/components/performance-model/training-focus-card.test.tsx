@@ -32,40 +32,39 @@ vi.mock('@/paraglide/runtime', () => ({ getLocale: () => 'en' }));
   globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
 ).IS_REACT_ACT_ENVIRONMENT = true;
 
-const point = (duration: number, value: number) => ({
+const point = (distance: number | null, duration: number | null) => ({
+  distance,
   duration,
-  value,
+  value: 100,
   date: new Date('2026-11-01'),
   eventId: 1,
   activityName: 'Run',
 });
-const model = (critical: number, reserve: number, reliable = true) => ({
-  critical,
-  reserve,
-  reserveSeconds: reserve / critical,
-  reliable,
-  profile: 'SPEED' as const,
-  profilePosition: 0.2,
-  focus: 'THRESHOLD' as TrainingFocus,
-  points: [point(300, critical + reserve / 300), point(1200, critical)],
-});
 const slot = (
-  value: ReturnType<typeof model> | null,
+  model: { critical: number; reserve: number; reliable: boolean } | null,
   missing: ('SHORT' | 'LONG')[] = [],
+  pace = true,
 ) => ({
-  model: value,
-  points: value?.points ?? [],
+  model,
+  points: model
+    ? pace
+      ? [point(800, null), point(5000, null)]
+      : [point(null, 300), point(null, 1200)]
+    : [],
   missing,
 });
 const models = (
   pace: ReturnType<typeof slot>,
   power: ReturnType<typeof slot>,
+  focus: TrainingFocus | null,
 ): PerformanceModelsDto => ({
-  from: new Date('2026-08-18'),
-  days: 90,
+  from: new Date('2026-07-27'),
+  days: 112,
   running: {
     pace,
     power,
+    profile: focus ? { type: 'SPEED', position: 0.8 } : null,
+    focus,
     durability: { value: 4.1, activities: 3 },
     predictions: [],
     marathonStartSpeed: null,
@@ -97,44 +96,37 @@ describe('TrainingFocusCard', () => {
     container.remove();
   });
 
-  it('names the focus from the pace model, and from power on request', () => {
+  it('names the focus, and shows the model on pace or on power', () => {
     state.data = models(
-      slot(model(4, 320)),
-      slot({ ...model(300, 9000), focus: 'SHORT_INTERVALS' }),
+      slot({ critical: 4, reserve: 180, reliable: true }),
+      slot({ critical: 300, reserve: 9000, reliable: true }, [], false),
+      'THRESHOLD',
     );
     render();
     expect(container.querySelector('[data-focus]')?.textContent).toBe(
       'performance_focus_threshold',
     );
     expect(container.textContent).toContain('performance_critical_pace');
-    expect(container.textContent).toContain('320 m');
+    expect(container.textContent).toContain('180 m');
 
     act(() =>
       container
         .querySelector<HTMLButtonElement>('[data-measure="power"]')
         ?.click(),
     );
+    // The focus stays: critical speed names it
     expect(container.querySelector('[data-focus]')?.textContent).toBe(
-      'performance_focus_short_intervals',
+      'performance_focus_threshold',
     );
     expect(container.textContent).toContain('300 W');
     expect(container.textContent).toContain('9 kJ');
   });
 
-  it('starts on power for an athlete with no pace bests', () => {
-    state.data = models(slot(null, ['SHORT', 'LONG']), slot(model(300, 18000)));
-    render();
-    expect(
-      container
-        .querySelector('[data-measure="power"]')
-        ?.getAttribute('aria-pressed'),
-    ).toBe('true');
-  });
-
   it('says what is missing and plans the short test', () => {
     state.data = models(
-      slot(model(4, 20, false), ['SHORT']),
+      slot({ critical: 4, reserve: 20, reliable: false }, ['SHORT']),
       slot(null, ['SHORT', 'LONG']),
+      null,
     );
     render();
     expect(container.querySelector('[data-focus]')).toBeNull();
@@ -156,5 +148,23 @@ describe('TrainingFocusCard', () => {
         (s: { durationValue: number }) => s.durationValue,
       ),
     ).toEqual([900, 180, 600]);
+  });
+
+  it('plans the 5 km when that is what is missing', () => {
+    state.data = models(
+      slot(null, ['LONG']),
+      slot(null, ['SHORT', 'LONG']),
+      null,
+    );
+    render();
+    expect(container.textContent).toContain('performance_missing_title_long');
+    act(() =>
+      container.querySelector<HTMLButtonElement>('[data-plan-test]')?.click(),
+    );
+    const [event] = state.mutate.mock.calls[0];
+    expect(event.workout.steps[1]).toMatchObject({
+      durationType: 'DISTANCE',
+      durationValue: 5000,
+    });
   });
 });

@@ -164,22 +164,42 @@ describe('duration records', () => {
   });
 });
 
-describe('grade-adjusted speed records (selfhost)', () => {
-  const time = Array.from({ length: 1501 }, (_, i) => i);
-  const gap = time.map((t) => (t < 300 ? 5 : 4));
-  const gapSpeed = (sport: string) =>
+describe('grade-adjusted pace records', () => {
+  // 30 minutes north at 3 m/s, the first 10 up a 10% slope: worth 1.658
+  // times the speed on the flat (Minetti), so 4.97 m/s
+  const time = Array.from({ length: 1801 }, (_, i) => i);
+  const latlng = time.map(
+    (t) => [45 + (t * 3) / 111_195, 6] as [number, number],
+  );
+  const altitude = time.map((t) => 500 + Math.min(t, 600) * 0.3);
+  const gapTimes = (stream: object, sport = 'TRAIL_RUNNING') =>
     new Map(
-      computeRecords({ time, gap }, sport)
+      computeRecords({ time, latlng, altitude, ...stream }, sport)
         .filter((record) => record.type === 'GAP_SPEED')
-        .map((record) => [record.duration!, record.value]),
+        .map((record) => [record.distance!, record]),
     );
 
-  test('keeps the durations of the critical speed model, on runs only', () => {
-    const records = gapSpeed('TRAIL_RUNNING');
-    expect([...records.keys()]).toEqual([120, 300, 600, 1200]);
-    expect(records.get(300)).toBeCloseTo(5, 6);
-    expect(records.get(600)).toBeCloseTo(4.5, 6);
-    expect(gapSpeed('CYCLING').size).toBe(0);
+  test('times the distances of critical speed as if run on the flat', () => {
+    const records = gapTimes({});
+    expect([...records.keys()]).toEqual([400, 800, 5000]);
+    // 400 m of ground on the climb: 133 s, worth 80 s on the flat
+    expect(records.get(400)?.value).toBeGreaterThan(79.5);
+    expect(records.get(400)?.value).toBeLessThan(81.5);
+    expect(records.get(800)?.value).toBeGreaterThan(159);
+    expect(records.get(800)?.value).toBeLessThan(163);
+    // 1800 m of climb, then 3200 m of flat at 3 m/s
+    expect(records.get(5000)?.value).toBeGreaterThan(1420);
+    expect(records.get(5000)?.value).toBeLessThan(1440);
+    // Where it happened is read in real time: on the climb
+    expect(records.get(400)?.endDuration).toBeLessThanOrEqual(620);
+  });
+
+  test('is the pace itself on the flat, on runs only', () => {
+    const flat = gapTimes({ altitude: time.map(() => 500) });
+    expect(flat.get(400)?.value).toBeCloseTo(400 / 3, 0);
+    expect(flat.get(5000)?.value).toBeCloseTo(5000 / 3, 0);
+    expect(gapTimes({}, 'CYCLING').size).toBe(0);
+    expect(gapTimes({ altitude: undefined }).size).toBe(0);
   });
 });
 

@@ -145,7 +145,7 @@ export class RecordController {
   @ApiOperation({
     summary: 'Critical power and critical speed models, and the training focus',
     description:
-      "Selfhost. For running on grade-adjusted pace and on power, and for cycling on power: the critical value (CS in m/s, CP in watts) and the reserve above it (D' in metres, W' in joules), fitted to the bests of 2, 5, 10 and 20 minutes of the last 90 days (Monod & Scherrer 1965; Smyth & Muniz-Pumares 2020). Each slot lists the bests it found and which end of the range is missing; a model whose reserve is too small to believe is marked unreliable. Running adds the durability (median heart rate drift of steady runs of an hour or more), race predictions and the speed a marathon should not start above. The profile and the focus rest on limits that are assumptions of this instance. Nothing is stored.",
+      "For running, critical speed (CS in m/s) and the distance above it (D' in metres) from the fastest grade-adjusted 400 m, 800 m and 5 km of the last 16 weeks, as Smyth & Muniz-Pumares (2020) fitted them to training data; a D' too small against their runners marks the model unreliable. From a reliable one: the profile between endurance and speed (D' against their mean and standard deviation), the training focus, race predictions and the speed a marathon should not start above (94% of CS). Durability is the median heart rate drift of the steady runs of an hour or more. For running and cycling power, critical power (CP in watts) and W' in joules from the bests of 2, 5, 10 and 20 minutes (Monod & Scherrer 1965). Each slot lists the bests it found and which end of its range is missing. Nothing is stored.",
   })
   @ApiQuery({
     name: 'athleteId',

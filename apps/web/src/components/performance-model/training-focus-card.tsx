@@ -9,16 +9,14 @@ import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import {
-  DURABILITY_LIMIT,
   EVENT_TYPE,
-  PERFORMANCE_MODEL_LONG,
-  PERFORMANCE_MODEL_SHORT,
   PerformanceModelDto,
   PerformanceModelSlotDto,
   PerformanceModelsDto,
   SPORT_TYPE,
   WORKOUT_DURATION_TYPE,
   WORKOUT_STEP_TYPE,
+  decouplingLevel,
 } from '@openathlete/shared';
 
 import { GarminAttribution } from '../garmin-attribution/garmin-attribution';
@@ -27,13 +25,11 @@ import { SectionLabel } from '../ui/section-label';
 import { Skeleton } from '../ui/skeleton';
 import {
   Measure,
-  defaultMeasure,
   focusLabel,
   focusReason,
   formatCritical,
   formatPercent,
   formatReserve,
-  runningSlot,
 } from './model-format';
 
 const DAY = 24 * 3600 * 1000;
@@ -101,9 +97,13 @@ function MeasureSwitch({
   );
 }
 
-function Profile({ model }: { model: PerformanceModelDto }) {
+function Profile({
+  profile,
+}: {
+  profile: NonNullable<PerformanceModelsDto['running']['profile']>;
+}) {
   // The scale reads speed on the left, endurance on the right
-  const left = `${(1 - model.profilePosition) * 100}%`;
+  const left = `${(1 - profile.position) * 100}%`;
   return (
     <div className="space-y-1.5">
       <div className="flex justify-between text-xs text-muted-foreground">
@@ -113,7 +113,7 @@ function Profile({ model }: { model: PerformanceModelDto }) {
       </div>
       <div
         className="relative h-2 rounded-full bg-muted"
-        data-profile={model.profile}
+        data-profile={profile.type}
       >
         <div
           className="absolute top-1/2 size-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-background"
@@ -131,7 +131,7 @@ function Rows({
 }: {
   data: PerformanceModelsDto;
   measure: Measure;
-  model: PerformanceModelDto;
+  model: PerformanceModelDto | null;
 }) {
   const pace = measure === 'pace';
   const { durability } = data.running;
@@ -146,7 +146,7 @@ function Rows({
             ? m.performance_critical_pace_hint()
             : m.performance_critical_power_hint()
         }
-        value={formatCritical(measure, model.critical)}
+        value={model ? formatCritical(measure, model.critical) : '–'}
       />
       <Row
         label={
@@ -157,7 +157,7 @@ function Rows({
             ? m.performance_reserve_pace_hint()
             : m.performance_reserve_power_hint()
         }
-        value={formatReserve(measure, model.reserve)}
+        value={model ? formatReserve(measure, model.reserve) : '–'}
       />
       <Row
         label={m.performance_durability()}
@@ -169,9 +169,9 @@ function Rows({
         value={durability ? formatPercent(durability.value) : '–'}
         note={
           durability
-            ? durability.value > DURABILITY_LIMIT
-              ? m.performance_durability_limited()
-              : m.performance_durability_good()
+            ? decouplingLevel(durability.value) === 'steady'
+              ? m.performance_durability_good()
+              : m.performance_durability_limited()
             : undefined
         }
       />
@@ -179,23 +179,24 @@ function Rows({
   );
 }
 
-/** A best the model needs, or the gap where one is missing */
+/** A best critical speed needs, or the gap where one is missing */
 function Bucket({
   label,
   slot,
-  inBucket,
+  short,
   now,
 }: {
   label: string;
   slot: PerformanceModelSlotDto;
-  inBucket: (duration: number) => boolean;
+  /** 400 or 800 m, else the 5 km */
+  short: boolean;
   now: number;
 }) {
   const point = slot.points
-    .filter((p) => inBucket(p.duration))
+    .filter((p) => (p.distance ?? 0) < 5000 === short)
     .sort((a, b) => b.date.getTime() - a.date.getTime())[0];
   // Found, but not all out: the model has too little reserve
-  const doubted = point && slot.model && !slot.model.reliable && inBucket(120);
+  const doubted = Boolean(point && short && slot.model && !slot.model.reliable);
   const found = point && !doubted;
   const days = point ? Math.floor((now - point.date.getTime()) / DAY) : 0;
   return (
@@ -221,28 +222,26 @@ function Bucket({
 
 function Missing({
   data,
-  measure,
   athleteId,
 }: {
   data: PerformanceModelsDto;
-  measure: Measure;
   athleteId?: number;
 }) {
-  const slot = runningSlot(data, measure);
+  const slot = data.running.pace;
   const [now] = useState(() => Date.now());
   const createEvent = useCreateEventMutation();
   const [planned, setPlanned] = useState(false);
   // The short test first: it is the one most training lacks
   const short = slot.missing.includes('SHORT') || slot.missing.length === 0;
-  const testSeconds = short ? 180 : 720;
 
   const planTest = () => {
     const start = new Date(now + DAY);
     start.setHours(9, 0, 0, 0);
     const warmup = 900;
     const cooldown = 600;
-    const total = warmup + testSeconds + cooldown;
-    const step = (stepType: WORKOUT_STEP_TYPE, durationValue: number) => ({
+    // Three minutes all out cover the 800 m; the long test is the 5 km
+    const total = warmup + (short ? 180 : 1500) + cooldown;
+    const timed = (stepType: WORKOUT_STEP_TYPE, durationValue: number) => ({
       stepType,
       durationType: WORKOUT_DURATION_TYPE.TIME,
       durationValue,
@@ -262,9 +261,16 @@ function Missing({
         athleteId,
         workout: {
           steps: [
-            step(WORKOUT_STEP_TYPE.WARMUP, warmup),
-            step(WORKOUT_STEP_TYPE.INTERVAL_ACTIVE, testSeconds),
-            step(WORKOUT_STEP_TYPE.COOLDOWN, cooldown),
+            timed(WORKOUT_STEP_TYPE.WARMUP, warmup),
+            short
+              ? timed(WORKOUT_STEP_TYPE.INTERVAL_ACTIVE, 180)
+              : {
+                  stepType: WORKOUT_STEP_TYPE.INTERVAL_ACTIVE,
+                  durationType: WORKOUT_DURATION_TYPE.DISTANCE,
+                  durationValue: 5000,
+                  targets: [],
+                },
+            timed(WORKOUT_STEP_TYPE.COOLDOWN, cooldown),
           ],
         },
       },
@@ -299,24 +305,21 @@ function Missing({
         <Bucket
           label={m.performance_bucket_long()}
           slot={slot}
-          inBucket={(d) => d >= PERFORMANCE_MODEL_LONG}
+          short={false}
           now={now}
         />
         <Bucket
           label={m.performance_bucket_short()}
           slot={slot}
-          inBucket={(d) => d <= PERFORMANCE_MODEL_SHORT}
+          short
           now={now}
         />
       </div>
       {slot.model && (
         <p className="text-sm text-muted-foreground">
           {m.performance_provisional({
-            name:
-              measure === 'pace'
-                ? m.performance_critical_pace()
-                : m.performance_critical_power(),
-            value: formatCritical(measure, slot.model.critical),
+            name: m.performance_critical_pace(),
+            value: formatCritical('pace', slot.model.critical),
           })}
         </p>
       )}
@@ -344,9 +347,10 @@ function Missing({
 }
 
 /**
- * Selfhost: where running training should focus, from the critical speed or
- * critical power model of the last days. Says what is missing, and offers
- * the test that fills the gap, when the bests give no model.
+ * Where running training should focus, from critical speed read on the
+ * grade-adjusted bests of the last weeks. The switch shows the model on
+ * pace or on power. When the bests give no model, or the short ones were
+ * not all out, it says which is missing and offers the test that fills it.
  */
 export function TrainingFocusCard({ athleteId }: { athleteId?: number }) {
   const { data, isLoading } = useGetPerformanceModelsQuery(athleteId);
@@ -354,31 +358,36 @@ export function TrainingFocusCard({ athleteId }: { athleteId?: number }) {
 
   if (isLoading) return <Skeleton className="h-40 rounded-md" />;
   if (!data) return null;
-  const measure = chosen ?? defaultMeasure(data);
-  const { model } = runningSlot(data, measure);
+  const { focus, profile } = data.running;
+  // Pace first: critical speed is what names the focus
+  const measure = chosen ?? 'pace';
   const recordsPath = `${getPath(['dashboard', 'records'])}${athleteId ? `/${athleteId}` : ''}`;
 
   return (
     <div className="space-y-3 rounded-md border p-3" data-training-focus>
       <div className="flex items-center justify-between gap-3">
         <SectionLabel>{m.performance_focus_title()}</SectionLabel>
-        <MeasureSwitch measure={measure} onChange={setChosen} />
+        {focus && <MeasureSwitch measure={measure} onChange={setChosen} />}
       </div>
-      {model?.reliable ? (
+      {focus && profile ? (
         <>
           <div className="space-y-1">
-            <div className="text-xl font-semibold" data-focus={model.focus}>
-              {focusLabel[model.focus]()}
+            <div className="text-xl font-semibold" data-focus={focus}>
+              {focusLabel[focus]()}
             </div>
             <p className="text-sm text-muted-foreground">
-              {focusReason[model.focus]()}
+              {focusReason[focus]()}
             </p>
           </div>
-          <Profile model={model} />
-          <Rows data={data} measure={measure} model={model} />
+          <Profile profile={profile} />
+          <Rows
+            data={data}
+            measure={measure}
+            model={data.running[measure].model}
+          />
         </>
       ) : (
-        <Missing data={data} measure={measure} athleteId={athleteId} />
+        <Missing data={data} athleteId={athleteId} />
       )}
       <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
         <span>{m.performance_based_on({ days: data.days })}</span>

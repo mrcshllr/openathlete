@@ -1,6 +1,6 @@
 /**
- * The critical power model, read from an athlete's best efforts, and what it
- * says about where training should focus. Selfhost only for now.
+ * The critical speed and critical power models, read from an athlete's best
+ * efforts, and what they say about where running training should focus.
  *
  * Sources:
  * - Monod H, Scherrer J. The work capacity of a synergic muscular group.
@@ -9,31 +9,36 @@
  *   work available above it.
  * - Smyth B, Muniz-Pumares D. Calculation of critical speed from raw training
  *   data in recreational marathon runners. Med Sci Sports Exerc
- *   2020;52(12):2637-2645, doi:10.1249/MSS.0000000000002412: the same line
- *   fitted to the fastest grade-adjusted efforts found in ordinary training
- *   gives a critical speed (CS, with D' in metres) that predicts marathon
- *   pace; starting above 94% of CS goes with slowing down later.
+ *   2020;52(12):2637-2645, doi:10.1249/MSS.0000000000002412. 25,000 runners,
+ *   16 weeks of training: the same line, distance against time, fitted to
+ *   the fastest grade-adjusted (Minetti 2002) efforts over set distances.
+ *   Their best model reads 400, 800 and 5,000 m: CS 3.69 +/- 0.57 m/s,
+ *   D' 136 +/- 39 m, marathon time predicted with R2 = 0.695 and an error
+ *   of 7.67%. Marathons were run at 84.8% of CS on average, and a first half
+ *   above 94% of CS went with slowing down by over 25% in the second.
+ * - Riegel PS. Athletic records and human endurance. American Scientist
+ *   1981;69(3):285-290: t2 = t1 x (d2 / d1)^1.06.
  * - Skiba PF, Fulford J, Clarke DC, Vanhatalo A, Jones AM. Intramuscular
  *   determinants of the ability to recover work capacity above critical
  *   power. Eur J Appl Physiol 2015;115(4):703-713: the balance of W' during
  *   an effort (W'bal), spent above CP and recovered below it.
- * - Riegel PS. Athletic records and human endurance. American Scientist
- *   1981;69(3):285-290: t2 = t1 x (d2 / d1)^1.06, for races longer than the
- *   model's 20 minutes.
+ * - Sandford GN, Laursen PB, Buchheit M. Anaerobic speed/power reserve and
+ *   sport performance. Sports Med 2021;51(10):2017-2028: profile athletes
+ *   between speed and endurance, and tailor the training to the profile.
+ * - Friel J. Aerobic endurance and decoupling (TrainingPeaks): heart rate
+ *   drifting under 5% against pace on a steady run shows aerobic endurance
+ *   (decouplingLevel).
  */
+import { decouplingLevel } from './activity-decoupling';
 
-/** The model holds between about 2 and 20 minutes: the bests it is read from */
-export const PERFORMANCE_MODEL_DURATIONS = [120, 300, 600, 1200] as const;
-/** One best at most this long and one at least this long, or no model */
-export const PERFORMANCE_MODEL_SHORT = 300;
-export const PERFORMANCE_MODEL_LONG = 600;
-
-export interface ModelEffort {
-  /** Seconds */
-  duration: number;
-  /** Average watts, or metres per second */
-  value: number;
-}
+/** Days of training the models read, the 16 weeks of Smyth & Muniz-Pumares */
+export const PERFORMANCE_MODEL_DAYS = 112;
+/** The distances of their best critical speed model, in metres */
+export const CRITICAL_SPEED_DISTANCES = [400, 800, 5000] as const;
+/** Critical power holds between about 2 and 20 minutes: the bests it reads */
+export const CRITICAL_POWER_DURATIONS = [120, 300, 600, 1200] as const;
+export const CRITICAL_POWER_SHORT = 300;
+export const CRITICAL_POWER_LONG = 600;
 
 export interface CriticalModel {
   /** CP in watts, or CS in metres per second */
@@ -44,9 +49,37 @@ export interface CriticalModel {
 
 export type ModelGap = 'SHORT' | 'LONG';
 
-/** The efforts the model is read from: the best of each of its durations */
-export function modelEfforts<T extends ModelEffort>(efforts: T[]): T[] {
-  return PERFORMANCE_MODEL_DURATIONS.flatMap((duration) => {
+/** Least squares of work (joules, or metres) against seconds */
+function fitLine(points: { seconds: number; work: number }[]) {
+  const n = points.length;
+  if (n < 2) return null;
+  const meanT = points.reduce((sum, p) => sum + p.seconds, 0) / n;
+  const meanW = points.reduce((sum, p) => sum + p.work, 0) / n;
+  let covariance = 0;
+  let variance = 0;
+  for (const point of points) {
+    covariance += (point.seconds - meanT) * (point.work - meanW);
+    variance += (point.seconds - meanT) ** 2;
+  }
+  if (variance === 0) return null;
+  const critical = covariance / variance;
+  const reserve = meanW - critical * meanT;
+  // A long effort stronger than a short one: the short one was not all out
+  return critical > 0 && reserve > 0 ? { critical, reserve } : null;
+}
+
+export interface PowerEffortPoint {
+  /** Seconds */
+  duration: number;
+  /** Average watts */
+  value: number;
+}
+
+/** The best of each duration critical power is read from */
+export function criticalPowerEfforts<T extends PowerEffortPoint>(
+  efforts: T[],
+): T[] {
+  return CRITICAL_POWER_DURATIONS.flatMap((duration) => {
     const best = efforts
       .filter((effort) => effort.duration === duration && effort.value > 0)
       .sort((a, b) => b.value - a.value)[0];
@@ -54,41 +87,68 @@ export function modelEfforts<T extends ModelEffort>(efforts: T[]): T[] {
   });
 }
 
-/** Which end of the range has no best: short, long, or none missing */
-export function missingModelEfforts(efforts: ModelEffort[]): ModelGap[] {
-  const used = modelEfforts(efforts);
+export function missingPowerEfforts(efforts: PowerEffortPoint[]): ModelGap[] {
+  const used = criticalPowerEfforts(efforts);
   const gaps: ModelGap[] = [];
-  if (!used.some((effort) => effort.duration <= PERFORMANCE_MODEL_SHORT))
+  if (!used.some((effort) => effort.duration <= CRITICAL_POWER_SHORT))
     gaps.push('SHORT');
-  if (!used.some((effort) => effort.duration >= PERFORMANCE_MODEL_LONG))
+  if (!used.some((effort) => effort.duration >= CRITICAL_POWER_LONG))
     gaps.push('LONG');
   return gaps;
 }
 
-/**
- * CP and W' (or CS and D') by least squares on work against time. Null
- * without a best on each side of the range, or when the bests give no
- * sensible line: a long effort stronger than a short one says the short one
- * was not all out.
- */
-export function fitCriticalModel(efforts: ModelEffort[]): CriticalModel | null {
-  const used = modelEfforts(efforts);
-  if (used.length < 2 || missingModelEfforts(efforts).length > 0) return null;
-  const n = used.length;
-  const meanT = used.reduce((sum, e) => sum + e.duration, 0) / n;
-  const meanW = used.reduce((sum, e) => sum + e.value * e.duration, 0) / n;
-  let covariance = 0;
-  let variance = 0;
-  for (const effort of used) {
-    const dt = effort.duration - meanT;
-    covariance += dt * (effort.value * effort.duration - meanW);
-    variance += dt * dt;
-  }
-  if (variance === 0) return null;
-  const critical = covariance / variance;
-  const reserve = meanW - critical * meanT;
-  if (!(critical > 0) || !(reserve > 0)) return null;
-  return { critical, reserve };
+/** CP and W' from the bests of 2 to 20 minutes, one on each side at least */
+export function fitCriticalPower(
+  efforts: PowerEffortPoint[],
+): CriticalModel | null {
+  if (missingPowerEfforts(efforts).length > 0) return null;
+  return fitLine(
+    criticalPowerEfforts(efforts).map((effort) => ({
+      seconds: effort.duration,
+      work: effort.value * effort.duration,
+    })),
+  );
+}
+
+export interface SpeedEffortPoint {
+  /** Metres */
+  distance: number;
+  /** Grade-adjusted seconds over that distance */
+  value: number;
+}
+
+/** The fastest of each distance critical speed is read from */
+export function criticalSpeedEfforts<T extends SpeedEffortPoint>(
+  efforts: T[],
+): T[] {
+  return CRITICAL_SPEED_DISTANCES.flatMap((distance) => {
+    const best = efforts
+      .filter((effort) => effort.distance === distance && effort.value > 0)
+      .sort((a, b) => a.value - b.value)[0];
+    return best ? [best] : [];
+  });
+}
+
+/** SHORT without 400 or 800 m, LONG without 5,000 m */
+export function missingSpeedEfforts(efforts: SpeedEffortPoint[]): ModelGap[] {
+  const used = criticalSpeedEfforts(efforts);
+  const gaps: ModelGap[] = [];
+  if (!used.some((effort) => effort.distance < 5000)) gaps.push('SHORT');
+  if (!used.some((effort) => effort.distance === 5000)) gaps.push('LONG');
+  return gaps;
+}
+
+/** CS and D' from the fastest 400, 800 and 5,000 m: distance against time */
+export function fitCriticalSpeed(
+  efforts: SpeedEffortPoint[],
+): CriticalModel | null {
+  if (missingSpeedEfforts(efforts).length > 0) return null;
+  return fitLine(
+    criticalSpeedEfforts(efforts).map((effort) => ({
+      seconds: effort.value,
+      work: effort.distance,
+    })),
+  );
 }
 
 /** Power or speed the model holds for a duration within its range */
@@ -96,50 +156,38 @@ export function modelValueAt(model: CriticalModel, seconds: number): number {
   return model.critical + model.reserve / seconds;
 }
 
-/**
- * Seconds the reserve lasts at twice the critical value: W' / CP, the same
- * for power and pace, so one scale places both.
- */
-export function reserveSeconds(model: CriticalModel): number {
-  return model.reserve / model.critical;
-}
+/** D' of the runners of Smyth & Muniz-Pumares, best model, in metres */
+export const D_PRIME_REFERENCE = { mean: 136, sd: 39 };
 
 export const ATHLETE_PROFILE = ['SPEED', 'HYBRID', 'ENDURANCE'] as const;
 export type AthleteProfile = (typeof ATHLETE_PROFILE)[number];
 
-/**
- * Where the reserve in seconds places an athlete between an endurance and a
- * speed profile. The idea follows the speed reserve of Sandford, Laursen &
- * Buchheit (Sports Med 2021;51:2017-2028); these two limits are NOT from a
- * study: they are a working assumption for this instance, to be replaced by
- * published reference values before the feature is proposed upstream.
- */
-export const PROFILE_LIMITS = { endurance: 40, speed: 70 };
-/** The ends of the scale the web draws */
-export const PROFILE_SCALE = { min: 15, max: 100 };
+const dPrimeScore = (model: CriticalModel) =>
+  (model.reserve - D_PRIME_REFERENCE.mean) / D_PRIME_REFERENCE.sd;
 
 /**
- * A reserve shorter than this says the short bests were not all out: the
- * line is then too flat to place the athlete. A working assumption, like
- * the limits above.
+ * A D' more than two standard deviations under those runners' says the
+ * short bests were not all out: the line is too flat to place the athlete.
  */
-export const MIN_RESERVE_SECONDS = 15;
-
-export function isReliableModel(model: CriticalModel): boolean {
-  return reserveSeconds(model) >= MIN_RESERVE_SECONDS;
+export function isReliableSpeedModel(model: CriticalModel): boolean {
+  return dPrimeScore(model) >= -2;
 }
 
+/**
+ * Where D' places a runner among those runners: more than one standard
+ * deviation above their mean is a large reserve (a speed profile), more
+ * than one below a small one (an endurance profile).
+ */
 export function athleteProfile(model: CriticalModel): AthleteProfile {
-  const seconds = reserveSeconds(model);
-  if (seconds < PROFILE_LIMITS.endurance) return 'ENDURANCE';
-  if (seconds > PROFILE_LIMITS.speed) return 'SPEED';
+  const score = dPrimeScore(model);
+  if (score > 1) return 'SPEED';
+  if (score < -1) return 'ENDURANCE';
   return 'HYBRID';
 }
 
-/** 0 at the endurance end of the scale, 1 at the speed end */
+/** 0 at the endurance end of the scale, 1 at the speed end: +/- 2 SD */
 export function profilePosition(model: CriticalModel): number {
-  const { min, max } = PROFILE_SCALE;
-  return Math.min(1, Math.max(0, (max - reserveSeconds(model)) / (max - min)));
+  return Math.min(1, Math.max(0, (dPrimeScore(model) + 2) / 4));
 }
 
 export const TRAINING_FOCUS = [
@@ -151,23 +199,20 @@ export const TRAINING_FOCUS = [
 export type TrainingFocus = (typeof TRAINING_FOCUS)[number];
 
 /**
- * Heart rate drifting more than this against pace or power on steady runs
- * marks limited aerobic endurance: Friel's 5% (TrainingPeaks, "Aerobic
- * endurance and decoupling").
- */
-export const DURABILITY_LIMIT = 5;
-
-/**
- * What to train: endurance first when heart rate drifts on long steady
- * runs, else the side of the profile that is short. A large reserve over a
- * low threshold asks for threshold work and volume; a small reserve for
- * short, fast intervals.
+ * What the profile is short of, following Sandford et al.'s advice to fit
+ * the training to it: aerobic endurance first when heart rate drifts on
+ * steady runs (Friel), else the threshold for a large reserve over a
+ * comparatively low critical speed, and the reserve for a small one.
  */
 export function trainingFocusOf(
   model: CriticalModel,
-  durability: number | null,
+  decouplingPercent: number | null,
 ): TrainingFocus {
-  if (durability !== null && durability > DURABILITY_LIMIT) return 'LONG_RUNS';
+  if (
+    decouplingPercent !== null &&
+    decouplingLevel(decouplingPercent) !== 'steady'
+  )
+    return 'LONG_RUNS';
   const profile = athleteProfile(model);
   if (profile === 'SPEED') return 'THRESHOLD';
   if (profile === 'ENDURANCE') return 'SHORT_INTERVALS';
@@ -175,32 +220,32 @@ export function trainingFocusOf(
 }
 
 export const RIEGEL_RACE_EXPONENT = 1.06;
+/** The share of critical speed marathons were run at, on average (Smyth) */
+export const MARATHON_SPEED_SHARE = 0.848;
 /** The share of critical speed a marathon should not start above (Smyth) */
 export const MARATHON_START_SHARE = 0.94;
-export const RACE_DISTANCES = [5000, 10000, 21097.5, 42195] as const;
 
 /**
- * Race times from a critical speed model. 5 km straight from the model when
- * it takes at most its 20 minutes, else from the model's 20 minutes; the
- * longer races from the 5 km by Riegel's formula.
+ * Race times from a critical speed model: 5 km from the model itself, which
+ * was fitted to it; 10 km and the half marathon from there by Riegel; the
+ * marathon at the share of critical speed Smyth & Muniz-Pumares measured,
+ * which predicted it within 7.67%.
  */
 export function racePredictions(
   model: CriticalModel,
 ): { distance: number; seconds: number }[] {
-  const longest = PERFORMANCE_MODEL_DURATIONS[3];
-  const direct = (5000 - model.reserve) / model.critical;
-  const anchor =
-    direct <= longest
-      ? { distance: 5000, seconds: direct }
-      : {
-          distance: modelValueAt(model, longest) * longest,
-          seconds: longest,
-        };
-  return RACE_DISTANCES.map((distance) => ({
-    distance,
-    seconds:
-      anchor.seconds * (distance / anchor.distance) ** RIEGEL_RACE_EXPONENT,
-  }));
+  const five = (5000 - model.reserve) / model.critical;
+  const riegel = (distance: number) =>
+    five * (distance / 5000) ** RIEGEL_RACE_EXPONENT;
+  return [
+    { distance: 5000, seconds: five },
+    { distance: 10000, seconds: riegel(10000) },
+    { distance: 21097.5, seconds: riegel(21097.5) },
+    {
+      distance: 42195,
+      seconds: 42195 / (model.critical * MARATHON_SPEED_SHARE),
+    },
+  ];
 }
 
 /**

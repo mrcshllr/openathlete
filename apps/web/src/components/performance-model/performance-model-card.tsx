@@ -9,7 +9,8 @@ import {
 import { m } from '@/paraglide/messages';
 
 import {
-  PERFORMANCE_MODEL_DURATIONS,
+  CRITICAL_POWER_DURATIONS,
+  D_PRIME_REFERENCE,
   formatDuration,
   modelValueAt,
 } from '@openathlete/shared';
@@ -62,6 +63,12 @@ export function PerformanceModelCard({ athleteId }: { athleteId?: number }) {
                 </span>
               </div>
             ))}
+            <p className="text-xs text-muted-foreground">
+              {m.performance_reference({
+                mean: D_PRIME_REFERENCE.mean,
+                sd: D_PRIME_REFERENCE.sd,
+              })}
+            </p>
             {marathonStartSpeed && (
               <p className="text-xs text-muted-foreground">
                 {m.performance_marathon_tip({
@@ -81,7 +88,7 @@ export function PerformanceModelCard({ athleteId }: { athleteId?: number }) {
                 {formatReserve('power', powerModel.reserve)}
               </span>
             </div>
-            {PERFORMANCE_MODEL_DURATIONS.map((seconds) => (
+            {CRITICAL_POWER_DURATIONS.map((seconds) => (
               <div
                 key={seconds}
                 className="flex justify-between gap-3 border-b pb-1.5"

@@ -140,9 +140,11 @@ export type ModeledFtpDto = z.infer<typeof modeledFtpSchema>;
 
 /** A best effort a performance model is read from */
 export const modelPointSchema = z.object({
-  /** Seconds */
-  duration: z.number(),
-  /** Watts, or grade-adjusted metres per second */
+  /** Metres: the efforts of critical speed */
+  distance: z.number().nullable(),
+  /** Seconds: the efforts of critical power */
+  duration: z.number().nullable(),
+  /** Grade-adjusted seconds over the distance, or watts over the duration */
   value: z.number(),
   date: z.coerce.date(),
   eventId: z.number().nullable(),
@@ -151,38 +153,30 @@ export const modelPointSchema = z.object({
 
 export type ModelPointDto = z.infer<typeof modelPointSchema>;
 
-/**
- * The critical power model of one sport on one measure (power, or
- * grade-adjusted pace), and what it suggests to train.
- */
+/** A critical speed (CS, D') or critical power (CP, W') model */
 export const performanceModelSchema = z.object({
-  /** CP in watts, or CS in metres per second */
+  /** CS in metres per second, or CP in watts */
   critical: z.number(),
-  /** W' in joules, or D' in metres */
+  /** D' in metres, or W' in joules */
   reserve: z.number(),
-  /** Seconds the reserve lasts at twice the critical value */
-  reserveSeconds: z.number(),
   /**
-   * False when the reserve is too small to believe: the short bests were
-   * not all out, so the profile and the focus are not to be shown
+   * False for a D' too small to believe: the short bests were not all out,
+   * so no profile and no focus are read from it. Always true for power,
+   * which has no reference to be held against.
    */
   reliable: z.boolean(),
-  profile: z.enum(ATHLETE_PROFILE),
-  /** 0 at the endurance end of the scale, 1 at the speed end */
-  profilePosition: z.number(),
-  focus: z.enum(TRAINING_FOCUS),
-  /** The bests the model was fitted to */
-  points: z.array(modelPointSchema),
 });
 
 export type PerformanceModelDto = z.infer<typeof performanceModelSchema>;
 
-/** A measure the bests could not give a model for, and which end is missing */
+/** One measure of one sport: its model, the bests found, what is missing */
 export const performanceModelSlotSchema = z.object({
   model: performanceModelSchema.nullable(),
-  /** The bests found, model or not */
   points: z.array(modelPointSchema),
-  /** SHORT: no best of 2 to 5 minutes; LONG: none of 10 to 20 minutes */
+  /**
+   * SHORT: no best over 400 or 800 m (pace), 2 to 5 minutes (power), or one
+   * that was not all out; LONG: none over 5 km, or 10 to 20 minutes
+   */
   missing: z.array(z.enum(['SHORT', 'LONG'])),
 });
 
@@ -195,8 +189,18 @@ export const performanceModelsSchema = z.object({
   from: z.coerce.date(),
   days: z.number(),
   running: z.object({
+    /** Critical speed, on grade-adjusted pace */
     pace: performanceModelSlotSchema,
     power: performanceModelSlotSchema,
+    /** Where D' places the runner; null without a reliable pace model */
+    profile: z
+      .object({
+        type: z.enum(ATHLETE_PROFILE),
+        /** 0 at the endurance end of the scale, 1 at the speed end */
+        position: z.number(),
+      })
+      .nullable(),
+    focus: z.enum(TRAINING_FOCUS).nullable(),
     /**
      * Heart rate drift against pace or power, in percent: the median of the
      * steady runs of an hour or more. Null without such a run.

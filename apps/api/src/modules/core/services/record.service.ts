@@ -22,7 +22,9 @@ import {
   FTP_MODEL_SPORTS,
   GetRecordEffortsQueryDto,
   MARATHON_START_SHARE,
+  ModelPointDto,
   ModeledMetricsDto,
+  PERFORMANCE_MODEL_DAYS,
   PerformanceModelSlotDto,
   PerformanceModelsDto,
   PowerEffort,
@@ -35,15 +37,17 @@ import {
   YearBestRecordDto,
   YearReviewRecordDto,
   athleteProfile,
-  fitCriticalModel,
-  isReliableModel,
+  criticalPowerEfforts,
+  criticalSpeedEfforts,
+  fitCriticalPower,
+  fitCriticalSpeed,
+  isReliableSpeedModel,
   median,
-  missingModelEfforts,
-  modelEfforts,
+  missingPowerEfforts,
+  missingSpeedEfforts,
   modelFtp,
   profilePosition,
   racePredictions,
-  reserveSeconds,
   runEnergyPerMetre,
   trainingFocusOf,
 } from '@openathlete/shared';
@@ -122,6 +126,13 @@ const RUNNING_ECONOMY_MAX_CLIMB = 0.01;
  */
 const RUNNING_ECONOMY_CANDIDATES = 20;
 const RUNNING_ECONOMY_MAX_RUNS = 12;
+
+const hasDuration = (
+  point: ModelPointDto,
+): point is ModelPointDto & { duration: number } => point.duration !== null;
+const hasDistance = (
+  point: ModelPointDto,
+): point is ModelPointDto & { distance: number } => point.distance !== null;
 
 /** Runs the durability is read from: an hour or more, mostly easy */
 const DURABILITY_MIN_SECONDS = 60 * 60;
@@ -281,8 +292,10 @@ export class RecordService {
     from.setUTCHours(0, 0, 0, 0);
     from.setUTCDate(from.getUTCDate() - FTP_MODEL_DAYS);
 
-    const efforts = (sports: readonly string[]) =>
-      this.bestEfforts(targetAthleteId, 'POWER', sports, from);
+    const efforts = async (sports: readonly string[]): Promise<PowerEffort[]> =>
+      (await this.bestEfforts(targetAthleteId, 'POWER', sports, from)).map(
+        (effort) => ({ ...effort, duration: effort.duration ?? 0 }),
+      );
 
     const [running, cycling] = await Promise.all([
       efforts(FTP_MODEL_SPORTS.running),
@@ -296,15 +309,25 @@ export class RecordService {
     };
   }
 
-  /** The best of each duration since a date, records an athlete excluded left out */
+  /**
+   * The best of each duration (power) or distance (grade-adjusted time)
+   * since a date, records an athlete excluded left out
+   */
   private async bestEfforts(
     athleteId: number,
     type: 'POWER' | 'GAP_SPEED',
     sports: readonly string[],
     from: Date,
-  ): Promise<PowerEffort[]> {
+  ): Promise<ModelPointDto[]> {
+    // The most watts over a duration, the least seconds over a distance
+    const each =
+      type === 'POWER' ? Prisma.sql`r.duration` : Prisma.sql`r.distance`;
+    const best =
+      type === 'POWER'
+        ? Prisma.sql`r.duration, r.value DESC`
+        : Prisma.sql`r.distance, r.value ASC`;
     const rows = await this.prisma.$queryRaw<BestRecordRow[]>`
-      SELECT DISTINCT ON (r.duration)
+      SELECT DISTINCT ON (${each})
         r.record_id, r.type, r.distance, r.duration, r.value, r.date,
         a.event_id, e.name AS activity_name
       FROM record r
@@ -315,9 +338,10 @@ export class RecordService {
         AND a.sport::text IN (${Prisma.join([...sports])})
         AND r.date >= ${from}
         AND ${notExcluded}
-      ORDER BY r.duration, r.value DESC`;
+      ORDER BY ${best}`;
     return rows.map((row) => ({
-      duration: row.duration ?? 0,
+      distance: row.distance,
+      duration: row.duration,
       value: row.value,
       date: row.date,
       eventId: row.event_id,
@@ -326,10 +350,10 @@ export class RecordService {
   }
 
   /**
-   * Selfhost: the critical power model of running (on grade-adjusted pace
-   * and on power) and of cycling, from the bests of 2 to 20 minutes of the
-   * last days, with what it suggests to train. See performance-model.ts for
-   * the sources, and for what is an assumption of this instance.
+   * Critical speed of running, on grade-adjusted pace, with the profile and
+   * the training focus it suggests, and critical power of running and
+   * cycling: from the bests of the last 16 weeks. See performance-model.ts
+   * for the sources.
    */
   async getPerformanceModels(
     user: AuthUser,
@@ -339,27 +363,13 @@ export class RecordService {
     const targetAthleteId = await this.targetAthleteId(user, athleteId);
     const from = new Date(now);
     from.setUTCHours(0, 0, 0, 0);
-    from.setUTCDate(from.getUTCDate() - FTP_MODEL_DAYS);
+    from.setUTCDate(from.getUTCDate() - PERFORMANCE_MODEL_DAYS);
+    const { running, cycling } = FTP_MODEL_SPORTS;
 
     const [pace, runPower, ridePower, [drift]] = await Promise.all([
-      this.bestEfforts(
-        targetAthleteId,
-        'GAP_SPEED',
-        FTP_MODEL_SPORTS.running,
-        from,
-      ),
-      this.bestEfforts(
-        targetAthleteId,
-        'POWER',
-        FTP_MODEL_SPORTS.running,
-        from,
-      ),
-      this.bestEfforts(
-        targetAthleteId,
-        'POWER',
-        FTP_MODEL_SPORTS.cycling,
-        from,
-      ),
+      this.bestEfforts(targetAthleteId, 'GAP_SPEED', running, from),
+      this.bestEfforts(targetAthleteId, 'POWER', running, from),
+      this.bestEfforts(targetAthleteId, 'POWER', cycling, from),
       // Steady runs of an hour or more: mostly below the first threshold
       this.prisma.$queryRaw<{ value: number | null; activities: number }[]>`
         SELECT
@@ -369,7 +379,7 @@ export class RecordService {
         JOIN event e ON e.event_id = a.event_id
         WHERE e.athlete_id = ${targetAthleteId}
           AND e.start_date >= ${from}
-          AND a.sport::text IN (${Prisma.join([...FTP_MODEL_SPORTS.running])})
+          AND a.sport::text IN (${Prisma.join([...running])})
           AND a.decoupling_percent IS NOT NULL
           AND a.moving_time >= ${DURABILITY_MIN_SECONDS}
           AND a.intensity_seconds[1] >= ${DURABILITY_LOW_SHARE} * (
@@ -380,46 +390,46 @@ export class RecordService {
         ? { value: drift.value, activities: drift.activities }
         : null;
 
-    const slot = (
-      efforts: PowerEffort[],
-      drifting: number | null,
-    ): PerformanceModelSlotDto => {
-      const points = modelEfforts(efforts);
-      const fitted = fitCriticalModel(efforts);
-      const missing = missingModelEfforts(efforts);
-      if (!fitted) return { model: null, points, missing };
-      const reliable = isReliableModel(fitted);
+    const powerSlot = (efforts: ModelPointDto[]): PerformanceModelSlotDto => {
+      const points = efforts.filter(hasDuration);
+      const model = fitCriticalPower(points);
       return {
-        model: {
-          ...fitted,
-          reserveSeconds: reserveSeconds(fitted),
-          reliable,
-          profile: athleteProfile(fitted),
-          profilePosition: profilePosition(fitted),
-          focus: trainingFocusOf(fitted, drifting),
-          points,
-        },
-        points,
-        // A short best that was not all out is as good as none
-        missing: reliable ? missing : ['SHORT'],
+        model: model && { ...model, reliable: true },
+        points: criticalPowerEfforts(points),
+        missing: missingPowerEfforts(points),
       };
     };
+    const speedPoints = pace.filter(hasDistance);
+    const speedModel = fitCriticalSpeed(speedPoints);
+    const reliable = speedModel ? isReliableSpeedModel(speedModel) : false;
+    const trusted = speedModel && reliable ? speedModel : null;
 
-    const paceSlot = slot(pace, durability?.value ?? null);
     return {
       from,
-      days: FTP_MODEL_DAYS,
+      days: PERFORMANCE_MODEL_DAYS,
       running: {
-        pace: paceSlot,
-        power: slot(runPower, durability?.value ?? null),
+        pace: {
+          model: speedModel && { ...speedModel, reliable },
+          points: criticalSpeedEfforts(speedPoints),
+          // A short best that was not all out is as good as none
+          missing:
+            speedModel && !reliable
+              ? ['SHORT']
+              : missingSpeedEfforts(speedPoints),
+        },
+        power: powerSlot(runPower),
+        profile: trusted && {
+          type: athleteProfile(trusted),
+          position: profilePosition(trusted),
+        },
+        focus: trusted && trainingFocusOf(trusted, durability?.value ?? null),
         durability,
-        predictions: paceSlot.model ? racePredictions(paceSlot.model) : [],
-        marathonStartSpeed: paceSlot.model
-          ? paceSlot.model.critical * MARATHON_START_SHARE
+        predictions: trusted ? racePredictions(trusted) : [],
+        marathonStartSpeed: trusted
+          ? trusted.critical * MARATHON_START_SHARE
           : null,
       },
-      // Heart rate drift is read on runs only
-      cycling: { power: slot(ridePower, null) },
+      cycling: { power: powerSlot(ridePower) },
     };
   }
 

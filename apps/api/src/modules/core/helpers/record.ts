@@ -1,10 +1,12 @@
 import { Record as PrismaRecord, RecordType } from '@openathlete/database';
 import {
   ActivityStream,
-  PERFORMANCE_MODEL_DURATIONS,
+  CRITICAL_SPEED_DISTANCES,
   isValidGpsPoint,
+  smoothAltitude,
 } from '@openathlete/shared';
 
+import { gradeAdjustedSpeed } from './grade-adjusted-speed';
 import { highestVerticalSpeed } from './record-plausibility';
 
 // Target distances for all record types (in meters)
@@ -53,7 +55,9 @@ const VERTICAL_SPEED_SPORTS = new Set<string>([
 ]);
 
 const GAP_SPEED_SPORTS = new Set(['RUNNING', 'TRAIL_RUNNING']);
-const GAP_SPEED_DURATIONS = new Set<number>(PERFORMANCE_MODEL_DURATIONS);
+const GAP_SPEED_DISTANCES = new Set<number>(CRITICAL_SPEED_DISTANCES);
+// The slope is read over 50 m of ground on either side
+const GAP_GRADE_HALF_WINDOW = 50;
 
 /** Altitude is smoothed with the median of this window */
 const ALTITUDE_MEDIAN_SECONDS = 30;
@@ -177,6 +181,56 @@ function computeSpeedRecords(
     const time = at(timeStream, stretch) - timeStream[stretch.left];
     return time > 0 ? { value: time, rank: -time } : null;
   });
+}
+
+/**
+ * Fastest grade-adjusted time over the distances critical speed is read
+ * from, as Smyth & Muniz-Pumares (2020) took them from training data: each
+ * moment counts for the time the same ground would have taken on the flat
+ * for the same energy (Minetti 2002), with the slope read over 100 m of
+ * smoothed altitude. A climb run hard is then a best effort like a lap of
+ * the track. Standing still counts as the time it took.
+ */
+function computeGapSpeedRecords(
+  timeStream: number[],
+  cumulativeDistances: number[],
+  altitude: number[],
+): ComputedRecord[] {
+  const n = Math.min(
+    timeStream.length,
+    cumulativeDistances.length,
+    altitude.length,
+  );
+  const distance = cumulativeDistances.slice(0, n);
+  const smoothed = smoothAltitude(altitude.slice(0, n), distance);
+  const flatTime = [0];
+  let lo = 0;
+  let hi = 0;
+  for (let i = 1; i < n; i++) {
+    while (hi < n - 1 && distance[hi] < distance[i] + GAP_GRADE_HALF_WINDOW)
+      hi++;
+    while (distance[lo] < distance[i] - GAP_GRADE_HALF_WINDOW) lo++;
+    const metres = distance[hi] - distance[lo];
+    // Too little ground to read a slope: standing, or the very start
+    const grade =
+      metres > GAP_GRADE_HALF_WINDOW / 2
+        ? (smoothed[hi] - smoothed[lo]) / metres
+        : 0;
+    const elapsed = Math.max(0, timeStream[i] - timeStream[i - 1]);
+    flatTime.push(
+      flatTime[i - 1] +
+        elapsed / gradeAdjustedSpeed(1, Number.isFinite(grade) ? grade : 0),
+    );
+  }
+  return bestStretches(
+    'GAP_SPEED',
+    timeStream.slice(0, n),
+    distance,
+    (stretch) => {
+      const time = at(flatTime, stretch) - flatTime[stretch.left];
+      return time > 0 ? { value: time, rank: -time } : null;
+    },
+  ).filter((record) => GAP_SPEED_DISTANCES.has(record.distance ?? 0));
 }
 
 /**
@@ -430,13 +484,6 @@ export const computeRecords = (
     ...(altitude?.length && sport && VERTICAL_SPEED_SPORTS.has(sport)
       ? computeVerticalSpeedRecords(time, altitude)
       : []),
-    // Selfhost: grade-adjusted speed, for the critical speed model. The
-    // stream has it once the GAP processor ran, on runs only
-    ...(stream.gap?.length && sport && GAP_SPEED_SPORTS.has(sport)
-      ? computeDurationRecords('GAP_SPEED', time, stream.gap).filter((record) =>
-          GAP_SPEED_DURATIONS.has(record.duration ?? 0),
-        )
-      : []),
   ];
 
   // Distance records require a route aligned with time
@@ -457,6 +504,9 @@ export const computeRecords = (
     ...computeSpeedRecords(time, cumulativeDistances),
     ...(altitude?.length
       ? computeElevationGainRecords(time, cumulativeDistances, altitude)
+      : []),
+    ...(altitude?.length && sport && GAP_SPEED_SPORTS.has(sport)
+      ? computeGapSpeedRecords(time, cumulativeDistances, altitude)
       : []),
     ...records,
   ];

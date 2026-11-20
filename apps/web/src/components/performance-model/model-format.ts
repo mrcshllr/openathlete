@@ -2,8 +2,6 @@ import { m } from '@/paraglide/messages';
 import { getLocale } from '@/paraglide/runtime';
 
 import {
-  PerformanceModelSlotDto,
-  PerformanceModelsDto,
   TrainingFocus,
   formatSpeed,
   formatSpeedUnit,
@@ -43,14 +41,3 @@ export const focusReason: Record<TrainingFocus, () => string> = {
   SHORT_INTERVALS: m.performance_focus_short_intervals_reason,
   BALANCED: m.performance_focus_balanced_reason,
 };
-
-export const runningSlot = (
-  data: PerformanceModelsDto,
-  measure: Measure,
-): PerformanceModelSlotDto => data.running[measure];
-
-/** Pace when it has bests, else power: most runners have no power meter */
-export const defaultMeasure = (data: PerformanceModelsDto): Measure =>
-  data.running.pace.points.length > 0 || data.running.power.points.length === 0
-    ? 'pace'
-    : 'power';

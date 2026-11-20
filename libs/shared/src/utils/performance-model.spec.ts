@@ -2,9 +2,11 @@ import { describe, expect, it } from 'vitest';
 
 import {
   athleteProfile,
-  fitCriticalModel,
-  isReliableModel,
-  missingModelEfforts,
+  fitCriticalPower,
+  fitCriticalSpeed,
+  isReliableSpeedModel,
+  missingPowerEfforts,
+  missingSpeedEfforts,
   modelValueAt,
   profilePosition,
   racePredictions,
@@ -12,45 +14,40 @@ import {
   trainingFocusOf,
 } from './performance-model';
 
-const line = (
-  critical: number,
-  reserve: number,
-  durations = [120, 300, 600, 1200],
-) =>
-  durations.map((duration) => ({
-    duration,
-    value: critical + reserve / duration,
-  }));
+const powerLine = (cp: number, w: number, durations = [120, 300, 600, 1200]) =>
+  durations.map((duration) => ({ duration, value: cp + w / duration }));
+const speedLine = (cs: number, d: number, distances = [400, 800, 5000]) =>
+  distances.map((distance) => ({ distance, value: (distance - d) / cs }));
 
-describe('fitCriticalModel', () => {
+describe('fitCriticalPower', () => {
   it('finds the line the bests lie on', () => {
-    const model = fitCriticalModel(line(300, 18000));
+    const model = fitCriticalPower(powerLine(300, 18000));
     expect(model?.critical).toBeCloseTo(300, 6);
     expect(model?.reserve).toBeCloseTo(18000, 3);
     expect(modelValueAt(model!, 600)).toBeCloseTo(330, 6);
   });
 
   it('keeps the best of each duration and ignores the others', () => {
-    const model = fitCriticalModel([
-      ...line(4, 240),
-      { duration: 300, value: 3 },
-      { duration: 3600, value: 9 },
+    const model = fitCriticalPower([
+      ...powerLine(300, 18000),
+      { duration: 300, value: 200 },
+      { duration: 3600, value: 900 },
     ]);
-    expect(model?.critical).toBeCloseTo(4, 6);
+    expect(model?.critical).toBeCloseTo(300, 6);
   });
 
   it('needs a best on each side of the range', () => {
-    expect(fitCriticalModel(line(300, 18000, [600, 1200]))).toBeNull();
-    expect(missingModelEfforts(line(300, 18000, [600, 1200]))).toEqual([
+    expect(fitCriticalPower(powerLine(300, 18000, [600, 1200]))).toBeNull();
+    expect(missingPowerEfforts(powerLine(300, 18000, [600, 1200]))).toEqual([
       'SHORT',
     ]);
-    expect(missingModelEfforts(line(300, 18000, [120]))).toEqual(['LONG']);
-    expect(missingModelEfforts([])).toEqual(['SHORT', 'LONG']);
+    expect(missingPowerEfforts(powerLine(300, 18000, [120]))).toEqual(['LONG']);
+    expect(missingPowerEfforts([])).toEqual(['SHORT', 'LONG']);
   });
 
   it('gives no model when the long effort beats the short one', () => {
     expect(
-      fitCriticalModel([
+      fitCriticalPower([
         { duration: 300, value: 280 },
         { duration: 1200, value: 300 },
       ]),
@@ -58,48 +55,65 @@ describe('fitCriticalModel', () => {
   });
 });
 
+describe('fitCriticalSpeed', () => {
+  it("reads CS and D' from the fastest 400 m, 800 m and 5 km", () => {
+    const model = fitCriticalSpeed([
+      ...speedLine(4, 136),
+      // A slower 800 m, and a distance the model does not read
+      { distance: 800, value: 400 },
+      { distance: 1000, value: 100 },
+    ]);
+    expect(model?.critical).toBeCloseTo(4, 6);
+    expect(model?.reserve).toBeCloseTo(136, 4);
+  });
+
+  it('needs the 5 km and one of the short distances', () => {
+    expect(
+      fitCriticalSpeed(speedLine(4, 136, [400, 5000]))?.critical,
+    ).toBeCloseTo(4, 6);
+    expect(fitCriticalSpeed(speedLine(4, 136, [400, 800]))).toBeNull();
+    expect(missingSpeedEfforts(speedLine(4, 136, [400, 800]))).toEqual([
+      'LONG',
+    ]);
+    expect(missingSpeedEfforts(speedLine(4, 136, [5000]))).toEqual(['SHORT']);
+  });
+});
+
 describe('profile and focus', () => {
-  const model = (seconds: number) => ({
-    critical: 300,
-    reserve: 300 * seconds,
+  const model = (reserve: number) => ({ critical: 4, reserve });
+
+  it("places D' among the runners of the reference: 136 m, give or take 39", () => {
+    expect(athleteProfile(model(90))).toBe('ENDURANCE');
+    expect(athleteProfile(model(136))).toBe('HYBRID');
+    expect(athleteProfile(model(180))).toBe('SPEED');
+    expect(profilePosition(model(136))).toBe(0.5);
+    expect(profilePosition(model(300))).toBe(1);
+    expect(profilePosition(model(10))).toBe(0);
   });
 
-  it('places the athlete by the seconds the reserve lasts', () => {
-    expect(athleteProfile(model(30))).toBe('ENDURANCE');
-    expect(athleteProfile(model(55))).toBe('HYBRID');
-    expect(athleteProfile(model(90))).toBe('SPEED');
-    expect(profilePosition(model(100))).toBe(0);
-    expect(profilePosition(model(15))).toBe(1);
-  });
-
-  it('doubts a reserve too small to be an all-out effort', () => {
-    expect(isReliableModel(model(5))).toBe(false);
-    expect(isReliableModel(model(20))).toBe(true);
+  it("doubts a D' two standard deviations under theirs", () => {
+    expect(isReliableSpeedModel(model(50))).toBe(false);
+    expect(isReliableSpeedModel(model(60))).toBe(true);
   });
 
   it('trains the short side, and endurance first when heart rate drifts', () => {
-    expect(trainingFocusOf(model(90), 3)).toBe('THRESHOLD');
-    expect(trainingFocusOf(model(30), null)).toBe('SHORT_INTERVALS');
-    expect(trainingFocusOf(model(55), 5)).toBe('BALANCED');
-    expect(trainingFocusOf(model(90), 5.1)).toBe('LONG_RUNS');
+    expect(trainingFocusOf(model(180), 3)).toBe('THRESHOLD');
+    expect(trainingFocusOf(model(90), null)).toBe('SHORT_INTERVALS');
+    expect(trainingFocusOf(model(136), 4.9)).toBe('BALANCED');
+    expect(trainingFocusOf(model(180), 5)).toBe('LONG_RUNS');
   });
 });
 
 describe('racePredictions', () => {
-  it('reads 5 km from the model and the rest by Riegel', () => {
-    const [five, ten, , marathon] = racePredictions({
+  it('reads 5 km from the model, the marathon from its share of CS', () => {
+    const [five, ten, half, marathon] = racePredictions({
       critical: 4,
-      reserve: 240,
+      reserve: 136,
     });
-    expect(five.seconds).toBeCloseTo(1190, 6);
-    expect(ten.seconds).toBeCloseTo(1190 * 2 ** 1.06, 6);
-    expect(marathon.distance).toBe(42195);
-  });
-
-  it('starts from the 20 minutes when 5 km takes longer', () => {
-    const [five] = racePredictions({ critical: 3, reserve: 150 });
-    // 20 minutes cover 3750 m
-    expect(five.seconds).toBeCloseTo(1200 * (5000 / 3750) ** 1.06, 6);
+    expect(five.seconds).toBeCloseTo(1216, 6);
+    expect(ten.seconds).toBeCloseTo(1216 * 2 ** 1.06, 6);
+    expect(half.distance).toBe(21097.5);
+    expect(marathon.seconds).toBeCloseTo(42195 / 3.392, 6);
   });
 });
 

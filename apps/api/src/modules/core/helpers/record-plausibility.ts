@@ -83,9 +83,10 @@ export function isPlausibleRecord(
   if (type === 'POWER') {
     return value <= (lookup(HIGHEST_POWER, duration) ?? Infinity);
   }
-  // Selfhost: grade-adjusted speed. The best milers hold about 7 m/s over
-  // four minutes; faster over two minutes or more is GPS or altitude noise
-  if (type === 'GAP_SPEED') return value <= 7;
+  // Grade-adjusted time: held to the same records as the pace
+  if (type === 'GAP_SPEED') {
+    return value >= (lookup(FASTEST_RUN, distance) ?? 0);
+  }
   if (type === 'SPEED' && RUNNING.has(sport)) {
     return value >= (lookup(FASTEST_RUN, distance) ?? 0);
   }
