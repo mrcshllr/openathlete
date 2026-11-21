@@ -374,6 +374,9 @@ export const routes = {
   subscription: {
     current: '/subscription/current',
     supporters: '/subscription/supporters',
+    wall: '/subscription/wall',
+    badge: '/subscription/badge',
+    badges: '/subscription/badges',
     checkout: '/subscription/checkout',
     cancel: '/subscription/cancel',
     resume: '/subscription/resume',

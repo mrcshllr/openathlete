@@ -58,3 +58,5 @@ export * from './signup-attribution';
 export * from './workout-text';
 export * from './strength';
 export * from './questionnaire';
+export * from './critical-model';
+export * from './capacity-profile';

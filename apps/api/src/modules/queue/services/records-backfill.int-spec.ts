@@ -98,8 +98,10 @@ describe('records backfill (PostgreSQL)', () => {
       records.refresh(ACTIVITY_ID),
       records.refresh(ACTIVITY_ID),
     ]);
+    // Selfhost: four pace records, and the 400 and 800 m of the
+    // grade-adjusted pace, flat without an altitude
     expect(
       await prisma.record.count({ where: { eventActivityId: ACTIVITY_ID } }),
-    ).toBe(4);
+    ).toBe(6);
   });
 });

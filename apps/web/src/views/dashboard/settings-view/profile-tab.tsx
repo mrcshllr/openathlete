@@ -10,6 +10,7 @@ import { ConfirmAction } from '@/components/confirm-action';
 import { FormProvider, RHFTextField } from '@/components/hook-form';
 import { RHFSelect } from '@/components/hook-form/rhf-select';
 import { SessionValidationSettingsCard } from '@/components/session-validation-settings-card';
+import { AccentThemeSettings } from '@/components/supporter-perks/accent-theme';
 import { Button } from '@/components/ui/button';
 import { SelectItem } from '@/components/ui/select';
 import { useAuthContext } from '@/contexts/auth';
@@ -157,6 +158,7 @@ export function ProfileTab() {
       {athlete?.athleteId && (
         <SessionValidationSettingsCard athleteId={athlete.athleteId} />
       )}
+      <AccentThemeSettings />
       <TrainingProfileSection />
       {athlete?.athleteId && <TrainingRemindersSection />}
       <EmailPreferencesSection />
