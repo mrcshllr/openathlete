@@ -15,18 +15,20 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '../ui/dropdown-menu';
+import { activityFileName } from './activity-file-name';
 import {
   ACTIVITY_STREAM_KEYS,
   ACTIVITY_STREAM_RESOLUTION,
 } from './activity-stream-keys';
-import { gpxFileName } from './gpx-file-name';
 import { originalFileName } from './original-file-name';
 
 /**
- * The downloads of an activity in one place: the device file (FIT) when it
- * was kept, and the GPS track (GPX) when the activity has one. The athlete
- * and their coach both get it, as both may read the activity. Hidden in the
- * iOS and Android apps, whose web view has no download folder.
+ * The downloads of an activity in one place: a FIT file, and the GPS track
+ * (GPX) when the activity has one. The FIT file is the device's own when it
+ * was kept, exactly as the watch wrote it; otherwise one is written from the
+ * recording, as the main project does. The athlete and their coach both get
+ * them, as both may read the activity. Hidden in the iOS and Android apps,
+ * whose web view has no download folder.
  */
 export function ActivityDownloadMenu({
   event,
@@ -45,7 +47,9 @@ export function ActivityDownloadMenu({
   );
   const hasTrack = Boolean(stream?.latlng?.some((point) => point.length === 2));
   const hasFile = Boolean(event.originalFile);
-  if (native || (!hasTrack && !hasFile)) return null;
+  const hasRecording = Boolean(stream?.time?.length);
+  const hasFit = hasFile || hasRecording;
+  if (native || (!hasTrack && !hasFit)) return null;
 
   const download = async (
     fileName: string,
@@ -76,20 +80,26 @@ export function ActivityDownloadMenu({
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuItem
-          disabled={!hasFile}
+          disabled={!hasFit}
           data-download-fit
           onClick={() =>
-            download(
-              originalFileName(event),
-              () => EventAPI.getEventOriginalFile(event.eventId),
-              m.activity_original_file_failed,
-            )
+            hasFile
+              ? download(
+                  originalFileName(event),
+                  () => EventAPI.getEventOriginalFile(event.eventId),
+                  m.activity_original_file_failed,
+                )
+              : download(
+                  activityFileName(event, 'fit'),
+                  () => EventAPI.getEventFit(event.eventId),
+                  m.activity_fit_download_failed,
+                )
           }
         >
           <FileDown className="size-4" />
           <div className="flex flex-col">
             <span>{m.activity_download_fit()}</span>
-            {!hasFile && (
+            {!hasFit && (
               <span className="text-xs text-muted-foreground">
                 {m.activity_download_fit_missing()}
               </span>
@@ -101,7 +111,7 @@ export function ActivityDownloadMenu({
           data-download-gpx
           onClick={() =>
             download(
-              gpxFileName(event),
+              activityFileName(event, 'gpx'),
               () => EventAPI.getEventGpx(event.eventId),
               m.activity_gpx_download_failed,
             )

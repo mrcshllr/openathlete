@@ -60,6 +60,7 @@ export const routes = {
     getEventOriginalFile: (eventId: Event['eventId']) =>
       `/event/${eventId}/original-file`,
     getEventGpx: (eventId: Event['eventId']) => `/event/${eventId}/gpx`,
+    getEventFit: (eventId: Event['eventId']) => `/event/${eventId}/fit`,
     activityCorrections: (eventId: Event['eventId']) =>
       `/event/${eventId}/activity/corrections`,
     getEventWeather: (eventId: Event['eventId']) => `/event/${eventId}/weather`,
@@ -253,6 +254,8 @@ export const routes = {
     },
     thresholds: '/coach/thresholds',
     threshold: (id: number) => `/coach/thresholds/${id}`,
+    calendarExport: (athleteId: number) =>
+      `/coach/athletes/${athleteId}/calendar-export`,
     getPendingInvitations: '/coach/invitations/pending',
     acceptInvitation: (invitationId: number) =>
       `/coach/invitations/${invitationId}/accept`,

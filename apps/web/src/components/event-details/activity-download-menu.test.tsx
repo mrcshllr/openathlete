@@ -14,6 +14,7 @@ const state = vi.hoisted(() => ({
   native: false,
   getEventGpx: vi.fn(),
   getEventOriginalFile: vi.fn(),
+  getEventFit: vi.fn(),
   downloadFile: vi.fn(),
   toastError: vi.fn(),
 }));
@@ -24,6 +25,7 @@ vi.mock('@/api/event/event.api', () => ({
   EventAPI: {
     getEventGpx: state.getEventGpx,
     getEventOriginalFile: state.getEventOriginalFile,
+    getEventFit: state.getEventFit,
   },
 }));
 vi.mock('@/utils/capacitor', () => ({ isCapacitor: () => state.native }));
@@ -62,7 +64,8 @@ vi.mock('../ui/dropdown-menu', () => ({
   globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
 ).IS_REACT_ACT_ENVIRONMENT = true;
 
-const track = { latlng: [[47.5, 11.1]] };
+const track = { time: [0, 1], latlng: [[47.5, 11.1], []] };
+const indoor = { time: [0, 1] };
 const activity = (extra: Partial<ActivityEvent> = {}) =>
   ({
     eventId: 7,
@@ -95,7 +98,7 @@ describe('ActivityDownloadMenu', () => {
     container.remove();
   });
 
-  it('shows nothing without a file or a track', () => {
+  it('shows nothing without a file, a recording or a track', () => {
     render(activity());
     expect(container.querySelector('[data-activity-download]')).toBeNull();
   });
@@ -107,8 +110,34 @@ describe('ActivityDownloadMenu', () => {
     expect(item('gpx')?.disabled).toBe(false);
   });
 
-  it('greys out the FIT file of an activity whose file was not kept', () => {
+  it('writes the FIT file from the recording when the device file was not kept', async () => {
     state.stream = track;
+    const written = new Blob(['written']);
+    state.getEventFit.mockResolvedValue(written);
+    render(activity());
+    expect(item('fit')?.disabled).toBe(false);
+    expect(item('fit')?.textContent).not.toContain(
+      'activity_download_fit_missing',
+    );
+
+    await act(async () => item('fit')?.click());
+    expect(state.getEventOriginalFile).not.toHaveBeenCalled();
+    expect(state.getEventFit).toHaveBeenCalledWith(7);
+    expect(state.downloadFile).toHaveBeenCalledWith(
+      '2026-10-14-Morning-Run.fit',
+      written,
+    );
+  });
+
+  it('offers a FIT file without GPS, as for a treadmill run', () => {
+    state.stream = indoor;
+    render(activity());
+    expect(item('fit')?.disabled).toBe(false);
+    expect(item('gpx')?.disabled).toBe(true);
+  });
+
+  it('greys out the FIT file of an activity with no file and no recording', () => {
+    state.stream = { latlng: [[47.5, 11.1]] };
     render(activity());
     expect(item('fit')?.disabled).toBe(true);
     expect(item('fit')?.textContent).toContain('activity_download_fit_missing');
@@ -133,6 +162,7 @@ describe('ActivityDownloadMenu', () => {
     await act(async () => item('gpx')?.click());
 
     expect(state.getEventOriginalFile).toHaveBeenCalledWith(7);
+    expect(state.getEventFit).not.toHaveBeenCalled();
     expect(state.getEventGpx).toHaveBeenCalledWith(7);
     expect(state.downloadFile).toHaveBeenNthCalledWith(
       1,

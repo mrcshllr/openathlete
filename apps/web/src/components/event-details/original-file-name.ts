@@ -1,6 +1,6 @@
 import { ActivityEvent } from '@openathlete/shared';
 
-import { gpxFileName } from './gpx-file-name';
+import { activityFileName } from './activity-file-name';
 
 /**
  * The name of the downloaded device file: the same day and name as the
@@ -10,5 +10,8 @@ export function originalFileName(
   event: Pick<ActivityEvent, 'name' | 'startDate' | 'originalFile'>,
 ): string {
   const fileType = event.originalFile?.fileType ?? 'FIT';
-  return gpxFileName(event).replace(/\.gpx$/, `.${fileType.toLowerCase()}`);
+  return activityFileName(event, 'gpx').replace(
+    /\.gpx$/,
+    `.${fileType.toLowerCase()}`,
+  );
 }
