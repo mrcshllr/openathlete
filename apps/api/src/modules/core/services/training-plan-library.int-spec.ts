@@ -195,7 +195,7 @@ describe('training plan library (PostgreSQL)', () => {
     const dto = applyTrainingPlanSchema.parse(body);
     const plan = await library.checkApply(user, templateId, dto);
     const { targets, ...options } = dto;
-    return library.applyToAthlete(plan, targets[0], options);
+    return library.applyToAthlete(plan, targets[0], options, user.userId);
   };
 
   const sessionsOf = (trainingPlanId: number) =>
@@ -409,7 +409,13 @@ describe('training plan library (PostgreSQL)', () => {
       dto,
     );
     const { targets, ...options } = dto;
-    await library.applyToAthlete(plan, targets[0], options, 'job-1');
+    await library.applyToAthlete(
+      plan,
+      targets[0],
+      options,
+      athlete.userId,
+      'job-1',
+    );
     const missed = await missedRun(`${Y}-03-04T07:00:00Z`);
     const coming = await missedRun(`${Y}-03-06T07:00:00Z`);
 
@@ -417,6 +423,7 @@ describe('training plan library (PostgreSQL)', () => {
       plan,
       targets[0],
       options,
+      athlete.userId,
       'job-1',
     );
 
@@ -617,6 +624,7 @@ describe('training plan library (PostgreSQL)', () => {
       plan,
       targets[0],
       options,
+      athlete.userId,
       'job-1',
     );
     const leftover = await prisma.event.create({
@@ -634,6 +642,7 @@ describe('training plan library (PostgreSQL)', () => {
       plan,
       targets[0],
       options,
+      athlete.userId,
       'job-1',
     );
     expect(retried).toEqual({
@@ -660,6 +669,7 @@ describe('training plan library (PostgreSQL)', () => {
       plan,
       targets[0],
       options,
+      athlete.userId,
       'job-2',
     );
     expect(second.trainingPlanId).not.toBe(first.trainingPlanId);
@@ -716,6 +726,10 @@ describe('training plan library (PostgreSQL)', () => {
       coach,
     );
     expect(result.sessions).toBe(3);
+    // The coach, not the athlete, planned them
+    expect(
+      (await sessionsOf(result.trainingPlanId)).map((e) => e.createdById),
+    ).toEqual([COACH_USER_ID, COACH_USER_ID, COACH_USER_ID]);
 
     // Someone else's library plan does not exist for the athlete
     await expect(

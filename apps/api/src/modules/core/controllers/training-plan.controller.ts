@@ -263,7 +263,14 @@ export class TrainingPlanController {
     if (targets.length === 1) {
       return {
         status: 'done',
-        results: [await this.library.applyToAthlete(plan, targets[0], options)],
+        results: [
+          await this.library.applyToAthlete(
+            plan,
+            targets[0],
+            options,
+            user.userId,
+          ),
+        ],
       };
     }
     const jobId = await this.queue.addTrainingPlanApplyJob({

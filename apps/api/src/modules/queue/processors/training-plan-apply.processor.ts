@@ -46,6 +46,7 @@ export class TrainingPlanApplyProcessor extends WorkerHost {
             job.data.plan,
             target,
             job.data.options,
+            job.data.userId,
             String(job.id),
           ),
         );

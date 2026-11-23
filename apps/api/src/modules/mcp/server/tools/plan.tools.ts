@@ -138,6 +138,7 @@ export const registerPlanWriteTools: ToolRegistrar = (server, ctx, deps) => {
           plan,
           targets[0],
           options,
+          ctx.user.userId,
         );
         return {
           trainingPlanId: result.trainingPlanId,

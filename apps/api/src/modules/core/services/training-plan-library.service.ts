@@ -403,12 +403,14 @@ export class TrainingPlanLibraryService {
   /**
    * Applies a plan to one athlete: the plan, its cycles, weeks and sessions
    * in one transaction, so a failure leaves nothing behind. The caller has
-   * checked that the user may plan for the athlete.
+   * checked that the user may plan for the athlete; `createdById` is that
+   * user, kept on each session as its author, as events planned elsewhere.
    */
   async applyToAthlete(
     plan: PlanToApply,
     target: TrainingPlanApplyTarget,
     options: ApplyOptions,
+    createdById: number,
     applyJobId?: string,
   ): Promise<TrainingPlanApplyResult> {
     if (applyJobId) {
@@ -536,6 +538,7 @@ export class TrainingPlanLibraryService {
                   athleteId,
                   trainingPlan.trainingPlanId,
                   week.trainingWeekId,
+                  createdById,
                 ),
                 select: { eventId: true },
               });
@@ -637,6 +640,7 @@ export class TrainingPlanLibraryService {
         weekStartsOn: weekdayOfDateKey(startDate),
         conflictMode: TRAINING_PLAN_CONFLICT_MODE.KEEP,
       },
+      user.userId,
     );
   }
 
@@ -1209,6 +1213,7 @@ export class TrainingPlanLibraryService {
     athleteId: number,
     trainingPlanId: number,
     trainingWeekId: number,
+    createdById: number,
   ): Prisma.EventUncheckedCreateInput {
     const startDate = zonedInstant(
       date,
@@ -1221,6 +1226,7 @@ export class TrainingPlanLibraryService {
         : session.goalDuration || DEFAULT_SESSION_SECONDS;
     const base = {
       athleteId,
+      createdById,
       trainingPlanId,
       trainingWeekId,
       name: session.name,

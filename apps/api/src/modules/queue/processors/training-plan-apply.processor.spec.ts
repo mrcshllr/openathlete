@@ -62,7 +62,9 @@ describe('TrainingPlanApplyProcessor', () => {
     expect(applyToAthlete.mock.calls.map((call) => call[1].athleteId)).toEqual([
       2, 3,
     ]);
-    expect(applyToAthlete.mock.calls[0][3]).toBe('42');
+    // The user who queued the job is the sessions' author
+    expect(applyToAthlete.mock.calls[0][3]).toBe(job.data.userId);
+    expect(applyToAthlete.mock.calls[0][4]).toBe('42');
     expect(output).toEqual({
       results: [result(1), result(2), result(3)],
       failures: [],
