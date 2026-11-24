@@ -14,9 +14,11 @@ meinen Änderungen obendrauf. Images und NAS hängen nur an diesem Fork.
 
 ## Auf dem NAS
 
-Eine Aufgabe im DSM-Aufgabenplaner, Benutzer `root`, täglich 05:00 (nach dem
-nächtlichen Build). Sie richtet beim ersten Lauf ein und macht danach jede
-Nacht Backup und Update:
+Eine Aufgabe im DSM-Aufgabenplaner, Benutzer `root`. Sie richtet beim ersten
+Lauf ein und holt danach, was es Neues gibt. Ein Lauf ohne neue Images fasst
+die Container nicht an und sichert höchstens einmal am Tag die Datenbank: die
+Aufgabe darf deshalb oft laufen, täglich 05:00 (nach dem nächtlichen Build)
+oder alle 10 Minuten, damit ein Build kurz nach dem Push auf dem NAS ist:
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/mrcshllr/openathlete/selfhost/selfhost/synology/install.sh | sh -s /volume1/docker/openathlete && /volume1/docker/openathlete/update.sh; tail -n 30 /volume1/docker/openathlete/update.log
@@ -29,7 +31,7 @@ Cloudflare Tunnel unter `https://training.marcushaller.de`. Einstellungen in
 | Skript | Zweck |
 | --- | --- |
 | `install.sh` | legt den Ordner an, holt die Skripte, erzeugt `.env` mit neuen Geheimnissen |
-| `update.sh` | Backup, neueste Compose-Datei und Images holen, neu starten |
+| `update.sh` | neueste Compose-Datei und Images holen; nur wenn es Neues gibt: Backup und Neustart |
 | `backup.sh` | Datenbank sichern (`backups/`, die letzten 14 bleiben) |
 | `restore.sh` | eine Sicherung zurückspielen |
 | `strava-webhook.sh` | Strava einmalig mitteilen, wohin es neue Aktivitäten meldet |
@@ -38,7 +40,7 @@ Cloudflare Tunnel unter `https://training.marcushaller.de`. Einstellungen in
 
 Eine Änderung kommt direkt auf `selfhost`, als Commit oder über einen Pull
 Request gegen `selfhost`. Jeder Push baut neue Images, das NAS holt sie beim
-nächsten Lauf seiner Aufgabe (05:00). Was auch dem Hauptprojekt nützt, geht
+nächsten Lauf seiner Aufgabe. Was auch dem Hauptprojekt nützt, geht
 zusätzlich als Pull Request dorthin, von einem eigenen Branch ab dessen `main`.
 
 Datenbank-Migrationen bekommen einen Zeitstempel nach der neuesten vorhandenen.
