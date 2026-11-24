@@ -19,6 +19,7 @@ import {
   WorkoutSyncListener,
 } from 'src/listeners';
 
+import { AdminModule } from './admin/admin.module';
 import { AgentModule } from './agent/agent.module';
 import { AiModule } from './ai';
 import { AnalyticsModule } from './analytics/analytics.module';
@@ -59,6 +60,7 @@ import { SubscriptionModule } from './subscription';
     AuthModule,
     CoreModule,
     InstanceModule,
+    AdminModule,
     AgentModule,
     AiModule,
     McpModule,

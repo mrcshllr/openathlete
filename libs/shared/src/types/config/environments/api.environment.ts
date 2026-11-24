@@ -331,6 +331,14 @@ export const ApiEnvSchema = z
         'open: anyone can sign up; invite: only with an invitation from a coach or athlete; closed: nobody, except the first account of the instance',
       ),
 
+    // Who administers the instance (optional)
+    ADMIN_EMAILS: z
+      .string()
+      .optional()
+      .describe(
+        'Comma-separated emails of the accounts that administer the instance: user overview, account locks, sign-up mode. Default: the first account of the instance',
+      ),
+
     // Where the hosted instance hears about new accounts (optional)
     SIGNUP_NOTIFICATION_EMAIL: z
       .string()

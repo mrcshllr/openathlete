@@ -53,6 +53,7 @@ import { passwordResetUrl } from '../helpers/password-reset-url';
 import { AccountDeletionService } from './account-deletion.service';
 import { AthleteInvitationService } from './athlete-invitation.service';
 import { CoachInvitationService } from './coach-invitation.service';
+import { currentSignupMode } from './instance-settings.service';
 import { TokenService } from './token.service';
 
 const NEW_ACCOUNT_MS = 24 * 60 * 60 * 1000;
@@ -207,16 +208,16 @@ export class UserService {
   };
 
   /**
-   * Applies SIGNUP_MODE to a new account, by password or by Google. The
-   * first account of an instance is always allowed: it is its
-   * administrator's.
+   * Applies the sign-up mode (SIGNUP_MODE, or what the administrator chose)
+   * to a new account, by password or by Google. The first account of an
+   * instance is always allowed: it is its administrator's.
    */
   private async assertSignupAllowed(
     invitationToken?: string,
     coachInvitationToken?: string,
     clubJoinToken?: string,
   ) {
-    const mode = this.configService.get('SIGNUP_MODE') ?? 'open';
+    const mode = await currentSignupMode(this.prisma, this.configService);
     if (mode === 'open') return;
     if ((await this.prisma.user.count()) === 0) return;
     if (mode === 'invite') {

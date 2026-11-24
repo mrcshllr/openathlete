@@ -36,6 +36,7 @@ const MAX_PERSONAL_TOKENS = 20;
 const USER_SELECT = {
   userId: true,
   email: true,
+  disabledAt: true,
   athlete: { select: { athleteId: true } },
   coachAthletes: { select: { athleteId: true } },
   clubMemberships: { select: { clubId: true, role: true } },
@@ -79,7 +80,9 @@ export class McpAuthService {
     resource: OAuthResource = 'MCP',
   ): Promise<McpPrincipal | null> {
     const now = new Date();
-    let grant: (McpGrant & { user: AuthUser }) | null = null;
+    let grant:
+      (McpGrant & { user: AuthUser & { disabledAt: Date | null } }) | null =
+      null;
 
     if (token.startsWith(TOKEN_PREFIX.personal) && resource === 'MCP') {
       grant = await this.prisma.mcpGrant.findUnique({
@@ -103,6 +106,8 @@ export class McpAuthService {
       }
     }
     if (!grant) return null;
+    // An account the administrator locked: its agents are locked out too
+    if (grant.user.disabledAt) return null;
 
     if (
       !grant.lastUsedAt ||
@@ -121,7 +126,8 @@ export class McpAuthService {
 
     const scopes = scopesFor(grant.scopes, resource);
     if (!scopes.length) return null;
-    return { user: grant.user, scopes, grantId: grant.mcpGrantId };
+    const { disabledAt: _disabledAt, ...user } = grant.user;
+    return { user, scopes, grantId: grant.mcpGrantId };
   }
 
   async list(user: AuthUser): Promise<McpConnection[]> {

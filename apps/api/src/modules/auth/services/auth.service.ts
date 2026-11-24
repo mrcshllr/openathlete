@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 
 import {
   ConflictException,
+  ForbiddenException,
   Injectable,
   Logger,
   UnauthorizedException,
@@ -67,6 +68,22 @@ export class AuthService {
     private readonly firebaseAuthService: FirebaseAuthService,
   ) {}
 
+  /**
+   * An account the administrator locked signs in nowhere: said plainly, as
+   * the password was right.
+   */
+  private assertActive(user: { disabledAt?: Date | null }) {
+    if (user.disabledAt) throw new ForbiddenException('ACCOUNT_DISABLED');
+  }
+
+  /** When the account was last used, for the administrator's overview */
+  private seen(userId: number) {
+    // Not worth failing a sign-in over
+    void this.prisma.user
+      .update({ where: { userId }, data: { lastSeenAt: new Date() } })
+      .catch(() => undefined);
+  }
+
   private createToken(
     userId: number,
     email: string,
@@ -91,6 +108,7 @@ export class AuthService {
         userId: true,
         password: true,
         email: true,
+        disabledAt: true,
       },
     });
     if (!user?.password) throw new UnauthorizedException();
@@ -102,6 +120,8 @@ export class AuthService {
       },
       { email },
     );
+    this.assertActive(user);
+    this.seen(user.userId);
 
     return {
       accessToken: this.createToken(user.userId, user.email, false),
@@ -122,9 +142,12 @@ export class AuthService {
       select: {
         userId: true,
         email: true,
+        disabledAt: true,
       },
     });
-    if (!user) throw new UnauthorizedException();
+    // A locked account's session ends: the app signs out
+    if (!user || user.disabledAt) throw new UnauthorizedException();
+    this.seen(user.userId);
 
     return {
       accessToken: this.createToken(user.userId, user.email, false),
@@ -156,9 +179,13 @@ export class AuthService {
   ): Promise<{ userId: number; email: string }> {
     const email = identity.email.toLowerCase();
 
-    let user = await this.prisma.user.findFirst({
+    let user: {
+      userId: number;
+      email: string;
+      disabledAt?: Date | null;
+    } | null = await this.prisma.user.findFirst({
       where: { email },
-      select: { userId: true, email: true },
+      select: { userId: true, email: true, disabledAt: true },
     });
 
     if (!user) {
@@ -194,8 +221,10 @@ export class AuthService {
         if (!user) throw error;
       }
     }
+    this.assertActive(user);
+    this.seen(user.userId);
 
-    return user;
+    return { userId: user.userId, email: user.email };
   }
 
   /** The web app's session tokens for a user */
@@ -221,6 +250,7 @@ export class AuthService {
         select: {
           userId: true,
           email: true,
+          disabledAt: true,
           athlete: {
             select: {
               athleteId: true,
@@ -240,10 +270,12 @@ export class AuthService {
       if (!user || user.userId !== payload.userId) {
         throw new UnauthorizedException();
       }
+      // Locked by the administrator: the token it still holds opens nothing
+      if (user.disabledAt) throw new UnauthorizedException();
 
       return {
-        ...user,
         userId: user.userId,
+        email: user.email,
         athlete: user.athlete ? { athleteId: user.athlete.athleteId } : null,
         coachAthletes:
           user.coachAthletes?.map((ca) => ({ athleteId: ca.athleteId })) || [],

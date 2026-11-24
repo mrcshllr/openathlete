@@ -60,6 +60,7 @@ Leave a variable empty to disable the feature:
 | ------------------------------------------------- | ---------------------------------------------------------- |
 | Transactional email (password reset, invitations) | `SMTP_*` and `EMAIL_FROM`, or `BREVO_API_KEY` (see below)  |
 | An email to you for each new account              | `SIGNUP_NOTIFICATION_EMAIL` (needs email)                  |
+| Other administrators than the first account       | `ADMIN_EMAILS` (see Administration)                        |
 | Device sync                                       | `STRAVA_*`, `GARMIN_*`, `POLAR_*`, `SUUNTO_*`              |
 | Single sign-on (OpenID Connect)                   | `OIDC_ISSUER`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`, `OIDC_NAME` (see below) |
 | Images in notes and messages                      | `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_ENDPOINT` (see below) |
@@ -216,6 +217,16 @@ The `https` profile runs Caddy with automatic certificates (see the quick start)
 | `closed`         | Nobody                                                                       |
 
 The first account of the instance is always allowed: it is yours. The install script sets `invite` when it sets up a public domain. Existing accounts keep signing in whatever the mode.
+
+### Administration
+
+The first account of the instance administers it. To name others, or someone else, set `ADMIN_EMAILS` to their emails, separated by commas: it then replaces the first account. Administrators stay in the configuration on purpose, so that nothing done in the app can lock the last one out.
+
+An administrator finds an **Administration** page in the settings:
+
+- **Sign-up**: choose `open`, `invite` or `closed` without touching the configuration. The choice applies at once and survives restarts; `SIGNUP_MODE` is what holds until you choose, and what you can go back to.
+- **Accounts**: every account with its name, email, when it was created and last used, how many activities it holds and which services it connected. Nothing of the training itself: seeing that takes a coach's access, as for anyone.
+- **Lock**: a locked account can no longer sign in, and its sessions and its agents stop working. Nothing is deleted, its devices keep syncing, and you can unlock it at any time. An administrator cannot be locked.
 
 ### Administration
 

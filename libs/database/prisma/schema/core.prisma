@@ -137,6 +137,11 @@ model User {
   eventsCreated             Event[]                    @relation("EventsCreated")
 
   // timestamps
+  /// The last sign-in or session renewal, for the administrator's overview
+  lastSeenAt DateTime? @map("last_seen_at")
+  /// Set while the administrator locks the account out: nothing is deleted
+  disabledAt DateTime? @map("disabled_at")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -298,4 +303,13 @@ model LifecycleEmail {
   @@unique([userId, kind, ref])
   @@index([userId, sentAt])
   @@map("lifecycle_email")
+}
+
+/// What the administrator set for the whole instance, over its environment
+model InstanceSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("instance_setting")
 }

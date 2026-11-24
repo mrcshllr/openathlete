@@ -8,6 +8,7 @@ import { cn } from '@/utils/shadcn';
 import { ComponentType, useMemo } from 'react';
 import { Navigate, useSearchParams } from 'react-router-dom';
 
+import { AdministrationTab } from './administration/administration-tab';
 import { AgentsTab } from './agents/agents-tab';
 import { AiTab } from './ai/ai-tab';
 import { AthletesTab } from './athletes-tab';
@@ -35,6 +36,7 @@ const TAB_PAGES: Record<string, ComponentType> = {
   invitations: InvitationsTab,
   subscription: SubscriptionSettingsPage,
   contribute: ContributeTab,
+  administration: AdministrationTab,
 };
 
 // Settings are full of small controls: on a phone they all reach 44 px, without

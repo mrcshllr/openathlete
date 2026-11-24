@@ -20,6 +20,8 @@ function setup(env: Record<string, string> = {}) {
       count: jest.fn().mockResolvedValue(3),
       create: jest.fn().mockResolvedValue({ userId: 42 }),
     },
+    // The administrator chose nothing: SIGNUP_MODE holds
+    instanceSetting: { findUnique: jest.fn().mockResolvedValue(null) },
     // One club link is open: 'club-link'
     club: {
       count: jest.fn(

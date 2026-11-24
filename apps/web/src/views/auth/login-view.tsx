@@ -33,6 +33,13 @@ const PLAN_TOKEN_STORAGE_KEY = 'pendingPlanToken';
 function loginErrorMessage(error: unknown) {
   const status = isAxiosError(error) ? error.response?.status : undefined;
   if (status === 401) return m.login_invalid_credentials();
+  // Locked by the administrator: said plainly, the password was right
+  if (
+    status === 403 &&
+    isAxiosError(error) &&
+    error.response?.data?.message === 'ACCOUNT_DISABLED'
+  )
+    return m.login_account_disabled();
   if (status === 429) return m.login_too_many_attempts();
   return m.login_failed();
 }

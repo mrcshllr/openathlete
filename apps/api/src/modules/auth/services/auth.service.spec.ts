@@ -1,4 +1,8 @@
-import { ConflictException, UnauthorizedException } from '@nestjs/common';
+import {
+  ConflictException,
+  ForbiddenException,
+  UnauthorizedException,
+} from '@nestjs/common';
 
 import { AuthService } from './auth.service';
 
@@ -11,6 +15,8 @@ function setup() {
         .fn()
         .mockResolvedValueOnce(null)
         .mockResolvedValueOnce(existing),
+      // When the account was last seen
+      update: jest.fn().mockResolvedValue(existing),
     },
   };
   const userService = {
@@ -92,5 +98,86 @@ describe('AuthService.validateUser', () => {
 
     expect(error).toBeInstanceOf(UnauthorizedException);
     expect((error as Error).message).not.toContain('runner@example.com');
+  });
+});
+
+describe('an account the administrator locked', () => {
+  const config = {
+    get: () => undefined,
+    getOrThrow: () => 'test-jwt-secret-at-least-32-characters-long',
+  };
+  const locked = {
+    userId: 7,
+    email: 'runner@example.com',
+    password: 'hash',
+    disabledAt: new Date('2026-11-24'),
+  };
+  const serviceFor = (
+    user:
+      | typeof locked
+      | (Omit<typeof locked, 'disabledAt'> & { disabledAt: null }),
+  ) => {
+    const prisma = {
+      user: {
+        findFirst: jest.fn().mockResolvedValue(user),
+        findUnique: jest.fn().mockResolvedValue({
+          ...user,
+          athlete: null,
+          coachAthletes: [],
+          clubMemberships: [],
+        }),
+        update: jest.fn().mockResolvedValue(user),
+      },
+    };
+    const userService = { comparePasswords: jest.fn() };
+    const service = new AuthService(
+      prisma as never,
+      userService as never,
+      config as never,
+      {} as never,
+    );
+    return { service, prisma };
+  };
+
+  it('cannot sign in, even with the right password', async () => {
+    const { service, prisma } = serviceFor(locked);
+    await expect(
+      service.login({ email: locked.email, password: 'right' }),
+    ).rejects.toThrow(new ForbiddenException('ACCOUNT_DISABLED'));
+    expect(prisma.user.update).not.toHaveBeenCalled();
+  });
+
+  it('cannot sign in through a provider either', async () => {
+    const { service } = serviceFor(locked);
+    await expect(
+      service.providerAccount({ email: locked.email }),
+    ).rejects.toThrow(new ForbiddenException('ACCOUNT_DISABLED'));
+  });
+
+  it('loses the session it still holds', async () => {
+    const { service } = serviceFor(locked);
+    await expect(
+      service.validateUser({ userId: 7, email: locked.email } as never),
+    ).rejects.toThrow(UnauthorizedException);
+    const { refreshToken } = service.sessionFor(locked);
+    await expect(service.refresh(refreshToken)).rejects.toThrow(
+      UnauthorizedException,
+    );
+  });
+
+  it('signs in as before once let back in, and is seen', async () => {
+    const { service, prisma } = serviceFor({ ...locked, disabledAt: null });
+    const session = await service.login({
+      email: locked.email,
+      password: 'right',
+    });
+    expect(session.accessToken).toBeTruthy();
+    expect(prisma.user.update).toHaveBeenCalledWith({
+      where: { userId: 7 },
+      data: { lastSeenAt: expect.any(Date) },
+    });
+    await expect(
+      service.validateUser({ userId: 7, email: locked.email } as never),
+    ).resolves.toMatchObject({ userId: 7 });
   });
 });

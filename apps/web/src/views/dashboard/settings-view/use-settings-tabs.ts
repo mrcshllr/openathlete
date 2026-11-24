@@ -1,3 +1,4 @@
+import { useAdminAccessQuery } from '@/api/admin';
 import { useCurrentSubscription } from '@/api/subscription';
 import { useUserRoles } from '@/contexts/auth';
 import { m } from '@/paraglide/messages';
@@ -10,6 +11,7 @@ import {
   type LucideIcon,
   Mail,
   Plug,
+  ServerCog,
   Shield,
   ShieldUser,
   Sparkles,
@@ -31,6 +33,7 @@ export const SETTINGS_TAB_ICONS: Record<string, LucideIcon> = {
   invitations: Mail,
   subscription: CreditCard,
   contribute: Heart,
+  administration: ServerCog,
 };
 
 const TRAINING_TABS = [
@@ -48,6 +51,8 @@ export function useSettingsTabs() {
   const roles = useUserRoles();
   const { data: subscription, isPending: isLoadingSubscription } =
     useCurrentSubscription();
+  // The instance's administrators only: nothing to see for the others
+  const { data: adminAccess } = useAdminAccessQuery();
   // Nothing to subscribe to on instances without billing, nor in the
   // Android app; the iOS app sells through the App Store when it is set up
   const channel = purchaseChannel();
@@ -70,6 +75,7 @@ export function useSettingsTabs() {
     'invitations',
     ...(showSubscription ? ['subscription'] : []),
     'contribute',
+    ...(adminAccess?.admin ? ['administration'] : []),
   ];
   const tabLabels: Record<string, string> = {
     connectors: m.connectors(),
@@ -84,6 +90,7 @@ export function useSettingsTabs() {
     invitations: m.invitations(),
     subscription: m.subscription(),
     contribute: m.contribute(),
+    administration: m.admin_tab(),
   };
   const tabDescriptions: Record<string, string> = {
     connectors: m.connect_activity_tracking_services(),
@@ -96,6 +103,7 @@ export function useSettingsTabs() {
     coaches: m.coaches_tab_description(),
     clubs: m.clubs_tab_description(),
     invitations: m.pending_invitations_description(),
+    administration: m.admin_tab_description(),
   };
 
   // Same order and groups on the Me tab and the desktop sidebar

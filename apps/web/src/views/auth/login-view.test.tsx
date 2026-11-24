@@ -31,10 +31,10 @@ vi.mock('@/paraglide/messages', () => ({
   globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
 ).IS_REACT_ACT_ENVIRONMENT = true;
 
-const httpError = (status: number) =>
+const httpError = (status: number, message?: string) =>
   Object.assign(new Error(`HTTP ${status}`), {
     isAxiosError: true,
-    response: { status, data: {} },
+    response: { status, data: message ? { message } : {} },
   });
 
 describe('LoginView', () => {
@@ -97,6 +97,12 @@ describe('LoginView', () => {
       password: 'long enough password',
     });
     expect(api.toastError).toHaveBeenCalledWith('login_invalid_credentials');
+  });
+
+  it('says when the administrator locked the account', async () => {
+    api.login.mockRejectedValue(httpError(403, 'ACCOUNT_DISABLED'));
+    await logIn();
+    expect(api.toastError).toHaveBeenCalledWith('login_account_disabled');
   });
 
   it('asks to wait after too many attempts', async () => {

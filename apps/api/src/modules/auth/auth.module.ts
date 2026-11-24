@@ -17,6 +17,7 @@ import { AthleteInvitationService } from './services/athlete-invitation.service'
 import { CoachInvitationService } from './services/coach-invitation.service';
 import { CoachJoinLinkService } from './services/coach-join-link.service';
 import { FirebaseAuthService } from './services/firebase-auth.service';
+import { InstanceSettingsService } from './services/instance-settings.service';
 import { InvitationService } from './services/invitation.service';
 import { OidcService } from './services/oidc.service';
 import { TokenService } from './services/token.service';
@@ -54,8 +55,10 @@ import { JwtStrategy } from './strategies';
     JwtStrategy,
     CaslAbilityFactory,
     UserTypeGuard,
+    InstanceSettingsService,
   ],
   exports: [
+    InstanceSettingsService,
     CaslAbilityFactory,
     UserService,
     JwtModule,

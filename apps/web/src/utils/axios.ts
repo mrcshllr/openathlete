@@ -109,6 +109,14 @@ export const routes = {
   instance: {
     getInstanceInfo: '/instance',
   },
+  admin: {
+    access: '/admin/access',
+    users: '/admin/users',
+    disableUser: (userId: number) => `/admin/users/${userId}/disable`,
+    enableUser: (userId: number) => `/admin/users/${userId}/enable`,
+    settings: '/admin/settings',
+    signupMode: '/admin/settings/signup-mode',
+  },
   record: {
     getRecords: '/record',
     getRecordSports: '/record/sports',

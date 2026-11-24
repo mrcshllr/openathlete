@@ -5,6 +5,7 @@ import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { ConnectorProvider } from '@openathlete/database';
 import { ApiEnvSchemaType, InstanceInfoDto } from '@openathlete/shared';
 
+import { currentSignupMode } from '../auth/services/instance-settings.service';
 import { OidcService } from '../auth/services/oidc.service';
 import { emailTransportKind } from '../notification/services/email-transport.service';
 import { PrismaService } from '../prisma/services/prisma.service';
@@ -60,14 +61,14 @@ export class InstanceController {
           type: 'string',
           enum: ['open', 'invite', 'closed'],
           description:
-            'SIGNUP_MODE, except open while the instance has no account',
+            'SIGNUP_MODE or what the administrator chose, except open while the instance has no account',
         },
       },
     },
   })
   async getInstanceInfo(): Promise<InstanceInfoDto> {
     const get = (key: keyof ApiEnvSchemaType) => this.config.get(key);
-    const mode = this.config.get('SIGNUP_MODE') ?? 'open';
+    const mode = await currentSignupMode(this.prisma, this.config);
     return {
       googleSignIn: !!get('FIREBASE_SERVICE_ACCOUNT_JSON'),
       email: !!emailTransportKind(get),
