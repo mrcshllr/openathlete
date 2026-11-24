@@ -3,7 +3,13 @@ import { act } from 'react';
 import { type Root, createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { AdminSettingsDto, AdminUserDto } from '@openathlete/shared';
+import {
+  AdminActionDto,
+  AdminInvitationDto,
+  AdminSettingsDto,
+  AdminSystemDto,
+  AdminUserDto,
+} from '@openathlete/shared';
 
 import { AdministrationTab } from './administration-tab';
 
@@ -17,8 +23,15 @@ vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 const state = vi.hoisted(() => ({
   settings: undefined as AdminSettingsDto | undefined,
   users: undefined as AdminUserDto[] | undefined,
+  invitations: [] as AdminInvitationDto[],
+  system: undefined as AdminSystemDto | undefined,
+  actions: [] as AdminActionDto[],
   setMode: vi.fn(),
   setDisabled: vi.fn(),
+  deleteUser: vi.fn(),
+  resetPassword: vi.fn(),
+  createInvitation: vi.fn(),
+  revokeInvitation: vi.fn(),
 }));
 vi.mock('@/api/admin', () => ({
   useAdminSettingsQuery: () => ({ data: state.settings }),
@@ -28,6 +41,22 @@ vi.mock('@/api/admin', () => ({
     mutate: state.setDisabled,
     isPending: false,
   }),
+  useDeleteUserMutation: () => ({ mutate: state.deleteUser, isPending: false }),
+  useResetPasswordMutation: () => ({
+    mutate: state.resetPassword,
+    isPending: false,
+  }),
+  useAdminInvitationsQuery: () => ({ data: state.invitations }),
+  useCreateInvitationMutation: () => ({
+    mutate: state.createInvitation,
+    isPending: false,
+  }),
+  useRevokeInvitationMutation: () => ({
+    mutate: state.revokeInvitation,
+    isPending: false,
+  }),
+  useAdminSystemQuery: () => ({ data: state.system }),
+  useAdminActionsQuery: () => ({ data: state.actions }),
 }));
 
 (
@@ -49,6 +78,7 @@ const user = (overrides: Partial<AdminUserDto>): AdminUserDto => ({
   providers: [],
   athletes: 0,
   coaches: 0,
+  storageBytes: 12_400_000,
   ...overrides,
 });
 
@@ -73,6 +103,52 @@ describe('AdministrationTab', () => {
       signupModeDefault: 'closed',
       signupModeOverridden: false,
     };
+    state.invitations = [
+      {
+        kind: 'INSTANCE',
+        id: 5,
+        recipient: 'For Ben',
+        sender: 'Ana Admin',
+        createdAt: new Date('2026-11-24'),
+        expiresAt: new Date('2026-12-01'),
+        url: 'https://train.example.com/auth/create-account?invitation=inst_x',
+      },
+      {
+        kind: 'ATHLETE',
+        id: 9,
+        recipient: 'friend@example.com',
+        sender: 'Ben Runner',
+        createdAt: new Date('2026-11-23'),
+        expiresAt: new Date('2026-11-30'),
+        url: null,
+      },
+    ];
+    state.system = {
+      users: 3,
+      activities: 3303,
+      databaseBytes: 2_400_000_000,
+      activityBytes: 1_100_000_000,
+      queues: [
+        {
+          name: 'activity-import',
+          waiting: 2,
+          active: 1,
+          delayed: 0,
+          failed: 3,
+        },
+        { name: 'coros-sync', waiting: 0, active: 0, delayed: 0, failed: 0 },
+      ],
+    };
+    state.actions = [
+      {
+        adminActionId: 2,
+        admin: 'Ana Admin',
+        action: 'USER_LOCKED',
+        target: 'c***@example.com',
+        detail: null,
+        createdAt: new Date('2026-11-24T10:00:00Z'),
+      },
+    ];
     state.users = [
       user({ admin: true }),
       user({
@@ -129,7 +205,13 @@ describe('AdministrationTab', () => {
     const rows = container.querySelectorAll('[data-admin-user]');
     expect(rows).toHaveLength(3);
     expect(rows[0].textContent).toContain('admin_user_administrator');
-    expect(rows[0].querySelector('button')).toBeNull();
+    // An administrator can be handed a password link, nothing more
+    expect(
+      [...rows[0].querySelectorAll('button')].map((button) =>
+        button.getAttribute('data-action'),
+      ),
+    ).toEqual(['reset']);
+    expect(rows[1].textContent).toContain('12 MB');
     expect(rows[1].textContent).toContain('ben@example.com');
     expect(rows[1].textContent).toContain('SUUNTO');
     expect(rows[1].textContent).toContain('admin_user_lock');
@@ -138,7 +220,7 @@ describe('AdministrationTab', () => {
 
   it('asks before locking, and unlocks at once', () => {
     render();
-    click('[data-admin-user="2"] button');
+    click('[data-admin-user="2"] [data-action="lock"]');
     expect(state.setDisabled).not.toHaveBeenCalled();
     click('[data-confirm-lock]');
     expect(state.setDisabled).toHaveBeenCalledWith(
@@ -146,10 +228,83 @@ describe('AdministrationTab', () => {
       expect.anything(),
     );
 
-    click('[data-admin-user="3"] button');
+    click('[data-admin-user="3"] [data-action="unlock"]');
     expect(state.setDisabled).toHaveBeenLastCalledWith(
       { userId: 3, disabled: false },
       expect.anything(),
     );
+  });
+
+  it('deletes an account only once its email is typed', () => {
+    render();
+    click('[data-admin-user="2"] [data-action="delete"]');
+    const confirm = () =>
+      document.querySelector<HTMLButtonElement>('[data-confirm-delete]')!;
+    expect(confirm().disabled).toBe(true);
+
+    const input = document.querySelector<HTMLInputElement>(
+      '[data-confirm-email]',
+    )!;
+    const setValue = Object.getOwnPropertyDescriptor(
+      HTMLInputElement.prototype,
+      'value',
+    )!.set!;
+    act(() => {
+      setValue.call(input, ' Ben@Example.com ');
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    expect(confirm().disabled).toBe(false);
+    click('[data-confirm-delete]');
+    expect(state.deleteUser).toHaveBeenCalledWith(2, expect.anything());
+  });
+
+  it('shows the password link to pass on when the server sends no email', () => {
+    state.resetPassword.mockImplementation(
+      (_userId: number, options: { onSuccess: (result: object) => void }) =>
+        options.onSuccess({
+          sent: false,
+          url: 'https://train.example.com/auth/password-reset?token=abc',
+        }),
+    );
+    render();
+    click('[data-admin-user="2"] [data-action="reset"]');
+    expect(
+      document.querySelector<HTMLInputElement>('[data-reset-link]')?.value,
+    ).toBe('https://train.example.com/auth/password-reset?token=abc');
+  });
+
+  it('creates a sign-up link, lists the open invitations and takes one back', () => {
+    render();
+    click('[data-create-invitation]');
+    expect(state.createInvitation).toHaveBeenCalledWith(
+      undefined,
+      expect.anything(),
+    );
+
+    const rows = container.querySelectorAll('[data-invitation]');
+    expect(rows).toHaveLength(2);
+    expect(rows[0].textContent).toContain('For Ben');
+    expect(rows[0].textContent).toContain('admin_link_copy');
+    expect(rows[1].textContent).toContain('friend@example.com');
+    expect(rows[1].textContent).not.toContain('admin_link_copy');
+
+    click('[data-invitation="ATHLETE-9"] [data-revoke]');
+    expect(state.revokeInvitation).toHaveBeenCalledWith(
+      { kind: 'ATHLETE', id: 9 },
+      expect.anything(),
+    );
+  });
+
+  it('says what the server stores, its busy queues and what was done', () => {
+    render();
+    const system = container.querySelector('[data-admin-system]')!;
+    expect(system.textContent).toContain('3303');
+    expect(system.textContent).toContain('2.4 GB');
+    const queues = container.querySelector('[data-admin-queues]')!;
+    expect(queues.textContent).toContain('activity-import');
+    expect(queues.textContent).not.toContain('coros-sync');
+    const log = container.querySelector('[data-admin-actions]')!;
+    expect(log.textContent).toContain('admin_action_user_locked');
+    expect(log.textContent).toContain('c***@example.com');
   });
 });

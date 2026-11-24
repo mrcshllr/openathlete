@@ -59,6 +59,8 @@ import { JwtStrategy } from './strategies';
   ],
   exports: [
     InstanceSettingsService,
+    AccountDeletionService,
+    TokenService,
     CaslAbilityFactory,
     UserService,
     JwtModule,

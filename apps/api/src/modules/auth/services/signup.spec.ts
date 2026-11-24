@@ -22,6 +22,17 @@ function setup(env: Record<string, string> = {}) {
     },
     // The administrator chose nothing: SIGNUP_MODE holds
     instanceSetting: { findUnique: jest.fn().mockResolvedValue(null) },
+    // One link of the administrator is open: 'inst_open'
+    instanceInvitation: {
+      findUnique: jest.fn(async ({ where }: { where: { token: string } }) =>
+        where.token === 'inst_open'
+          ? { token: 'inst_open', usedAt: null, createdAt: new Date() }
+          : where.token === 'inst_used'
+            ? { token: 'inst_used', usedAt: new Date(), createdAt: new Date() }
+            : null,
+      ),
+      updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+    },
     // One club link is open: 'club-link'
     club: {
       count: jest.fn(
@@ -139,6 +150,22 @@ describe('sign-up mode', () => {
     await expect(signUp({ invitationToken: 'valid' })).rejects.toThrow(
       'SIGNUP_CLOSED',
     );
+  });
+
+  it("lets in the holder of the administrator's link, even closed, once", async () => {
+    for (const mode of ['invite', 'closed']) {
+      const { signUp, prisma } = setup({ SIGNUP_MODE: mode });
+      await expect(signUp({ invitationToken: 'inst_open' })).resolves.toEqual({
+        userId: 42,
+      });
+      // Spent on the account it let in
+      expect(prisma.instanceInvitation.updateMany).toHaveBeenCalledWith({
+        where: { token: 'inst_open', usedAt: null },
+        data: { usedAt: expect.any(Date), usedByUserId: 42 },
+      });
+      await expect(signUp({ invitationToken: 'inst_used' })).rejects.toThrow();
+      await expect(signUp({ invitationToken: 'inst_none' })).rejects.toThrow();
+    }
   });
 
   it("always lets the instance's first account in", async () => {

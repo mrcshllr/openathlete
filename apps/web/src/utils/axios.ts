@@ -116,6 +116,13 @@ export const routes = {
     enableUser: (userId: number) => `/admin/users/${userId}/enable`,
     settings: '/admin/settings',
     signupMode: '/admin/settings/signup-mode',
+    user: (userId: number) => `/admin/users/${userId}`,
+    passwordReset: (userId: number) => `/admin/users/${userId}/password-reset`,
+    invitations: '/admin/invitations',
+    invitation: (kind: string, id: number) =>
+      `/admin/invitations/${kind}/${id}`,
+    system: '/admin/system',
+    actions: '/admin/actions',
   },
   record: {
     getRecords: '/record',

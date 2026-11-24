@@ -49,6 +49,11 @@ import {
 } from 'src/modules/prisma/services/prisma.service';
 
 import { AuthUser } from '../decorators/user.decorator';
+import {
+  consumeInstanceInvitation,
+  isInstanceInvitationToken,
+  usableInstanceInvitation,
+} from '../helpers/instance-invitation';
 import { passwordResetUrl } from '../helpers/password-reset-url';
 import { AccountDeletionService } from './account-deletion.service';
 import { AthleteInvitationService } from './athlete-invitation.service';
@@ -220,6 +225,13 @@ export class UserService {
     const mode = await currentSignupMode(this.prisma, this.configService);
     if (mode === 'open') return;
     if ((await this.prisma.user.count()) === 0) return;
+    // The administrator's own link opens the instance to its holder, even
+    // closed: that is how a closed instance takes someone in
+    if (
+      invitationToken &&
+      (await usableInstanceInvitation(this.prisma, invitationToken))
+    )
+      return;
     if (mode === 'invite') {
       const invited =
         (invitationToken &&
@@ -249,6 +261,17 @@ export class UserService {
     tokens: { invitationToken?: string; coachInvitationToken?: string },
     emailFromProvider: boolean,
   ) {
+    // The administrator's link names no address: whoever holds it may use it
+    if (isInstanceInvitationToken(tokens.invitationToken)) {
+      const usable = await usableInstanceInvitation(
+        this.prisma,
+        tokens.invitationToken!,
+      );
+      if (!usable) {
+        throw new BadRequestException('Invalid or expired invitation token');
+      }
+      tokens = { ...tokens, invitationToken: undefined };
+    }
     const invitations = await Promise.all([
       tokens.invitationToken &&
         this.invitationService.verifyInvitationToken(tokens.invitationToken),
@@ -404,7 +427,13 @@ export class UserService {
         throw error;
       });
 
-    if (invitationToken) {
+    if (isInstanceInvitationToken(invitationToken)) {
+      await consumeInstanceInvitation(
+        this.prisma,
+        invitationToken!,
+        created.userId,
+      );
+    } else if (invitationToken) {
       await this.invitationService.consumeInvitation(
         invitationToken,
         created.userId,

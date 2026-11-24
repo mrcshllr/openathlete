@@ -599,4 +599,31 @@ export class QueueService {
       'activity-processing': processingStats,
     };
   }
+
+  /**
+   * Selfhost: what every queue still has to do, for the administrator. The
+   * queues are the ones injected above, whatever they are.
+   */
+  async counts() {
+    const queues = Object.values(this as unknown as Record<string, unknown>)
+      .filter((value): value is Queue => value instanceof Queue)
+      .sort((a, b) => a.name.localeCompare(b.name));
+    return Promise.all(
+      queues.map(async (queue) => {
+        const counts = await queue.getJobCounts(
+          'waiting',
+          'active',
+          'delayed',
+          'failed',
+        );
+        return {
+          name: queue.name,
+          waiting: counts.waiting ?? 0,
+          active: counts.active ?? 0,
+          delayed: counts.delayed ?? 0,
+          failed: counts.failed ?? 0,
+        };
+      }),
+    );
+  }
 }

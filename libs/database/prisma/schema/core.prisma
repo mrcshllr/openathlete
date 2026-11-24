@@ -313,3 +313,41 @@ model InstanceSetting {
 
   @@map("instance_setting")
 }
+
+/// What an administrator did, for whoever asks later. No foreign keys: the
+/// record outlives the accounts it is about, with a masked email at most
+model AdminAction {
+  adminActionId Int @id @default(autoincrement()) @map("admin_action_id")
+
+  /// The administrator's user id
+  adminUserId  Int     @map("admin_user_id")
+  /// What was done: USER_LOCKED, USER_DELETED, SIGNUP_MODE_SET...
+  action       String
+  /// The account it was done to, and its masked email
+  targetUserId Int?    @map("target_user_id")
+  target       String?
+  /// What else there is to say: the mode chosen, an invitation's label
+  detail       String?
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([createdAt])
+  @@map("admin_action")
+}
+
+/// A link the administrator hands to someone to sign up with, while sign-up
+/// is by invitation: used once, valid a week, tied to no coach or club
+model InstanceInvitation {
+  instanceInvitationId Int @id @default(autoincrement()) @map("instance_invitation_id")
+
+  token        String    @unique
+  /// For whom it is, in the administrator's words
+  label        String?
+  createdBy    Int       @map("created_by")
+  usedAt       DateTime? @map("used_at")
+  usedByUserId Int?      @map("used_by_user_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("instance_invitation")
+}

@@ -225,8 +225,15 @@ The first account of the instance administers it. To name others, or someone els
 An administrator finds an **Administration** page in the settings:
 
 - **Sign-up**: choose `open`, `invite` or `closed` without touching the configuration. The choice applies at once and survives restarts; `SIGNUP_MODE` is what holds until you choose, and what you can go back to.
-- **Accounts**: every account with its name, email, when it was created and last used, how many activities it holds and which services it connected. Nothing of the training itself: seeing that takes a coach's access, as for anyone.
-- **Lock**: a locked account can no longer sign in, and its sessions and its agents stop working. Nothing is deleted, its devices keep syncing, and you can unlock it at any time. An administrator cannot be locked.
+- **Invitations**: create a sign-up link to hand to someone. It works once, for 7 days, even while sign-up is closed, and ties the account to no coach. Every invitation still open on the instance is listed, whoever sent it, and can be taken back.
+- **Accounts**: every account with its name, email, when it was created and last used, how many activities it holds, how much room they take and which services it connected. Nothing of the training itself: seeing that takes a coach's access, as for anyone.
+- **Lock**: a locked account can no longer sign in, and its sessions and its agents stop working. Nothing is deleted, its devices keep syncing, and you can unlock it at any time.
+- **Reset password**: gives an account the link of "forgot password", valid 15 minutes. With email on the instance it is sent to the account; without, you get the link to pass on yourself.
+- **Delete**: removes an account and everything it holds, for good, once you typed its email.
+- **System**: the number of accounts and activities, the size of the database, and what the background queues still have to do.
+- **Log**: what administrators did, with the account's email masked. It outlives the accounts it is about.
+
+An administrator can be neither locked nor deleted from the page.
 
 ### Administration
 

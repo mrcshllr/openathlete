@@ -117,8 +117,10 @@ export function CreateAccountView({ className }: React.ComponentProps<'form'>) {
   const { data: instance } = useInstanceInfoQuery();
   const signup = instance?.signup ?? 'open';
   // In invite mode, the link of an invitation still opens the form
+  // Selfhost: the administrator's own link (inst_…) opens even a closed one
+  const adminLink = !!invitationToken?.startsWith('inst_');
   const signupBlocked =
-    signup === 'closed' ||
+    (signup === 'closed' && !adminLink) ||
     (signup === 'invite' &&
       !invitationToken &&
       !coachInvitationToken &&

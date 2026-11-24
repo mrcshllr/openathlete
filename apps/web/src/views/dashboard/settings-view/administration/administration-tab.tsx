@@ -1,35 +1,21 @@
-import {
-  useAdminSettingsQuery,
-  useAdminUsersQuery,
-  useSetSignupModeMutation,
-  useSetUserDisabledMutation,
-} from '@/api/admin';
-import { Badge } from '@/components/ui/badge';
+import { useAdminSettingsQuery, useSetSignupModeMutation } from '@/api/admin';
 import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import { m } from '@/paraglide/messages';
-import { getLocale } from '@/paraglide/runtime';
-import { getDateLocale } from '@/utils/locales';
 import { cn } from '@/utils/shadcn';
 import { Check } from 'lucide-react';
-import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
-import { AdminUserDto, SignupMode } from '@openathlete/shared';
+import { SignupMode } from '@openathlete/shared';
 
 import {
   SettingsPanel,
-  SettingsRow,
   SettingsRowsSkeleton,
   SettingsSection,
 } from '../settings-section';
+import { ActionsSection } from './actions-section';
+import { InvitationsSection } from './invitations-section';
+import { SystemSection } from './system-section';
+import { UsersSection } from './users-section';
 
 const SIGNUP_MODES: {
   mode: SignupMode;
@@ -134,154 +120,15 @@ function SignupSection() {
   );
 }
 
-const fullName = (user: AdminUserDto) =>
-  `${user.firstName} ${user.lastName}`.trim() || user.email;
-
-/** The accounts of the instance, and the lock on each */
-function UsersSection() {
-  const { data: users } = useAdminUsersQuery();
-  const setDisabled = useSetUserDisabledMutation();
-  const [locking, setLocking] = useState<AdminUserDto | null>(null);
-  const dateFormat = useMemo(
-    () =>
-      new Intl.DateTimeFormat(getDateLocale(getLocale()), {
-        dateStyle: 'medium',
-      }),
-    [],
-  );
-
-  const change = (user: AdminUserDto, disabled: boolean) =>
-    setDisabled.mutate(
-      { userId: user.userId, disabled },
-      {
-        onSuccess: () =>
-          toast.success(
-            disabled
-              ? m.admin_user_locked_toast()
-              : m.admin_user_unlocked_toast(),
-          ),
-        onError: () => toast.error(m.admin_user_action_failed()),
-        onSettled: () => setLocking(null),
-      },
-    );
-
-  return (
-    <SettingsSection
-      title={
-        users
-          ? `${m.admin_users_title()} (${users.length})`
-          : m.admin_users_title()
-      }
-      description={m.admin_users_description()}
-    >
-      {!users ? (
-        <SettingsRowsSkeleton count={3} />
-      ) : (
-        <SettingsPanel>
-          {users.map((user) => (
-            <SettingsRow
-              key={user.userId}
-              stacked
-              data-admin-user={user.userId}
-              title={
-                <span className="flex flex-wrap items-center gap-1.5">
-                  {fullName(user)}
-                  {user.admin && (
-                    <Badge variant="secondary">
-                      {m.admin_user_administrator()}
-                    </Badge>
-                  )}
-                  {user.roles.includes('COACH') && (
-                    <Badge variant="outline">{m.coach()}</Badge>
-                  )}
-                  {user.disabledAt && (
-                    <Badge variant="destructive">{m.admin_user_locked()}</Badge>
-                  )}
-                </span>
-              }
-              description={
-                <>
-                  <span className="block">{user.email}</span>
-                  <span className="block">
-                    {[
-                      m.admin_user_registered({
-                        date: dateFormat.format(user.createdAt),
-                      }),
-                      user.lastSeenAt
-                        ? m.admin_user_last_seen({
-                            date: dateFormat.format(user.lastSeenAt),
-                          })
-                        : m.admin_user_never_seen(),
-                      m.admin_user_activities({ count: user.activities }),
-                      ...user.providers,
-                    ].join(' · ')}
-                  </span>
-                </>
-              }
-            >
-              {/* An administrator always stays able to undo a lock */}
-              {!user.admin &&
-                (user.disabledAt ? (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={setDisabled.isPending}
-                    onClick={() => change(user, false)}
-                  >
-                    {m.admin_user_unlock()}
-                  </Button>
-                ) : (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={setDisabled.isPending}
-                    onClick={() => setLocking(user)}
-                  >
-                    {m.admin_user_lock()}
-                  </Button>
-                ))}
-            </SettingsRow>
-          ))}
-        </SettingsPanel>
-      )}
-      <Dialog
-        open={locking !== null}
-        onOpenChange={(open) => !open && setLocking(null)}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              {m.admin_user_lock_title({
-                name: locking ? fullName(locking) : '',
-              })}
-            </DialogTitle>
-            <DialogDescription>{m.admin_user_lock_text()}</DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setLocking(null)}>
-              {m.cancel()}
-            </Button>
-            <Button
-              variant="destructive"
-              data-confirm-lock
-              disabled={setDisabled.isPending}
-              onClick={() => locking && change(locking, true)}
-            >
-              {m.admin_user_lock()}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </SettingsSection>
-  );
-}
-
-/** The instance's administration: who may sign up, and its accounts. */
+/** The instance's administration, for its administrators only. */
 export function AdministrationTab() {
   return (
     <div className="space-y-8">
       <SignupSection />
+      <InvitationsSection />
       <UsersSection />
+      <SystemSection />
+      <ActionsSection />
     </div>
   );
 }
