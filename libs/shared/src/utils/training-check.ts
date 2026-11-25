@@ -9,7 +9,7 @@
  *   Front Physiol 5:73, doi:10.3389/fphys.2014.00073; Vesterinen V et al.
  *   (2014), J Strength Cond Res 28(4):902-908,
  *   doi:10.1519/JSC.0000000000000349; Shushan T et al. (2023), Sports Med
- *   Open 9:21, doi:10.1186/s40798-023-00564-w.
+ *   Open 9, doi:10.1186/s40798-023-00564-w.
  * - A change counts once it is worthwhile and clear of the noise. Buchheit
  *   (2014) reports that, for one athlete, authors have used 0.5 or 1 times
  *   the athlete's own variation as the smallest worthwhile change, that a
@@ -23,7 +23,7 @@
  *   recreational athletes: taking the upper end, 1 %, for a critical speed
  *   or power read from training is our assumption.
  * - Drift of heart rate against output on long runs as durability: Maunder E
- *   et al. (2021), Sports Med 51:1619-1628; Smyth B et al. (2022), Sports
+ *   et al. (2021), Sports Med, PMID 33886100; Smyth B et al. (2022), Sports
  *   Med 52:2283-2295, doi:10.1007/s40279-022-01680-5. They read it on
  *   marathons, on the flat.
  *
