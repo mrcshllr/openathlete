@@ -28,6 +28,7 @@ import { useMemo } from 'react';
 import { EVENT_TYPE, METRIC_TYPE } from '@openathlete/shared';
 
 import { TrainingFocusCard } from '../performance-model/training-focus-card';
+import { TrainingCheckCard } from '../statistics/training-check-card';
 import { ModeledMetrics } from './modeled-metrics';
 
 interface AthleteDashboardHeaderProps {
@@ -255,7 +256,8 @@ export function AthleteDashboardHeader({
             </div>
           </div>
           {/* Selfhost: under the block, across its width */}
-          <div className="mt-4">
+          <div className="mt-4 space-y-4">
+            <TrainingCheckCard athleteId={athleteId} />
             <TrainingFocusCard athleteId={athleteId} />
           </div>
         </CardContent>

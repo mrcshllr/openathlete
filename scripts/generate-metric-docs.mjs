@@ -33,6 +33,7 @@ const COPY = {
   gap: ["gap", "gap"],
   speedProfile: ["metric_speed_profile_name", "speed_profile"],
   trainingFocus: ["performance_focus_title", "training_focus"],
+  trainingCheck: ["check_title", "training_check"],
   marathonStart: ["metric_marathon_start_name", "marathon_start"],
   reserveBalance: ["metric_reserve_balance_name", "reserve_balance"],
 };

@@ -116,6 +116,11 @@ const COPY: Record<
     what: m.metric_training_focus_what,
     limits: m.metric_training_focus_limits,
   },
+  trainingCheck: {
+    name: m.check_title,
+    what: m.metric_training_check_what,
+    limits: m.metric_training_check_limits,
+  },
   marathonStart: {
     name: m.metric_marathon_start_name,
     what: m.metric_marathon_start_what,
