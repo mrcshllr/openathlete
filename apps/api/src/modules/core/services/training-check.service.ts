@@ -8,7 +8,9 @@ import {
 
 import { Prisma } from '@openathlete/database';
 import {
+  CHECK_FLAT_CLIMB,
   CHECK_LONG_RUN_SECONDS,
+  CHECK_LOW_SHARE,
   CHECK_MIN_LONG_RUNS,
   CHECK_WINDOW_DAYS,
   FTP_MODEL_SPORTS,
@@ -36,7 +38,7 @@ const SPEED_BAND_MS = 0.5 / 3.6;
 interface BandRow {
   activityId: number;
   current: boolean;
-  kind: 'POWER' | 'SPEED';
+  kind: 'FLAT_POWER' | 'FLAT_SPEED';
   band: number;
   seconds: number;
   heartrate: number;
@@ -89,16 +91,20 @@ export class TrainingCheckService {
         FROM activity_profile_bin p
         JOIN event_activity a ON a.event_activity_id = p.event_activity_id
         ${runs}
-          AND p.kind IN ('POWER', 'SPEED')
+          AND p.kind IN ('FLAT_POWER', 'FLAT_SPEED')
           AND p.seconds >= ${MIN_BAND_SECONDS}`,
-      // Heart rate at the same output, late against early in a long run
+      // Long, steady and flat: on a mountain run, the drift mostly shows
+      // the climb coming before the descent
       this.prisma.$queryRaw<{ current: boolean; drift: number }[]>`
-        SELECT e.start_date >= ${split} AS current, p.value::float8 AS drift
-        FROM activity_profile_bin p
-        JOIN event_activity a ON a.event_activity_id = p.event_activity_id
+        SELECT e.start_date >= ${split} AS current,
+          a.decoupling_percent::float8 AS drift
+        FROM event_activity a
         ${runs}
-          AND p.kind = 'DRIFT_MATCHED'
-          AND a.moving_time >= ${CHECK_LONG_RUN_SECONDS}`,
+          AND a.decoupling_percent IS NOT NULL
+          AND a.moving_time >= ${CHECK_LONG_RUN_SECONDS}
+          AND a.elevation_gain <= ${CHECK_FLAT_CLIMB} * a.distance
+          AND a.intensity_seconds[1] >= ${CHECK_LOW_SHARE} * (
+            a.intensity_seconds[1] + a.intensity_seconds[2] + a.intensity_seconds[3])`,
       this.records.runningCriticalAt(athleteId, now),
       this.records.runningCriticalAt(athleteId, split),
     ]);
@@ -119,31 +125,31 @@ export class TrainingCheckService {
 }
 
 /**
- * Heart rate at the same output. On running power when nearly every run has
- * it, as it holds on slopes; else on grade-adjusted speed.
+ * Heart rate at the same output on flat ground. On running power when
+ * nearly every run has it, else on grade-adjusted speed.
  */
 function fitnessOf(bands: BandRow[]): TrainingCheckDto['fitness'] {
   const runsWith = (kind: BandRow['kind']) =>
     new Set(
       bands.filter((row) => row.kind === kind).map((row) => row.activityId),
     ).size;
-  const powered = runsWith('POWER');
+  const powered = runsWith('FLAT_POWER');
   const basis: BandRow['kind'] =
-    powered > 0 && powered >= POWER_SHARE * runsWith('SPEED')
-      ? 'POWER'
-      : 'SPEED';
+    powered > 0 && powered >= POWER_SHARE * runsWith('FLAT_SPEED')
+      ? 'FLAT_POWER'
+      : 'FLAT_SPEED';
   const { current, previous, referenceBand } = cardiacScores(
     bands.filter((row) => row.kind === basis),
   );
   return {
     ...compareWindows(current, previous, { higherIsBetter: false }),
-    basis,
+    basis: basis === 'FLAT_POWER' ? 'POWER' : 'SPEED',
     reference:
       referenceBand === null
         ? null
         : // The middle of the band
           (referenceBand + 0.5) *
-          (basis === 'POWER' ? POWER_BAND_W : SPEED_BAND_MS),
+          (basis === 'FLAT_POWER' ? POWER_BAND_W : SPEED_BAND_MS),
   };
 }
 

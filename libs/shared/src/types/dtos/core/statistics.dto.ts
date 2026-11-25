@@ -306,7 +306,7 @@ export type StatisticsEfficiencyDto = z.infer<
 const checkStatusSchema = z.enum(['BETTER', 'SAME', 'WORSE', 'OPEN']);
 const checkComparisonSchema = z.object({
   status: checkStatusSchema,
-  /** Mean of the last window; null without a value */
+  /** Median of the last window; null without a value */
   current: z.number().nullable(),
   previous: z.number().nullable(),
   /** Spread between single runs, null while open */
@@ -325,8 +325,8 @@ export const trainingCheckSchema = z.object({
   split: z.coerce.date(),
   to: z.coerce.date(),
   /**
-   * Fitter: heart rate against the usual one at the same output, in beats a
-   * minute, lower being better
+   * Fitter: heart rate against the usual one at the same output on flat
+   * stretches, in beats a minute, lower being better
    */
   fitness: checkComparisonSchema.extend({
     /** What output is: running power, or grade-adjusted speed */
@@ -345,8 +345,8 @@ export const trainingCheckSchema = z.object({
     previous: z.number().nullable(),
   }),
   /**
-   * Lasting longer: how much heart rate rises at the same output from the
-   * first half of a long run to the second, in percent
+   * Lasting longer: decoupling of heart rate from output on long, steady
+   * runs on the flat, in percent
    */
   durability: checkComparisonSchema,
 });

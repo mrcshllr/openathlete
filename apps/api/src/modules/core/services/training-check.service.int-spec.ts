@@ -78,11 +78,15 @@ describe('TrainingCheckService (PostgreSQL)', () => {
     }: {
       sport?: 'TRAIL_RUNNING' | 'RUNNING' | 'CYCLING';
       bands?: {
-        kind: 'POWER' | 'SPEED' | 'DRIFT_MATCHED';
+        kind: 'FLAT_POWER' | 'FLAT_SPEED';
         bin: number;
         value: number;
       }[];
       movingTime?: number;
+      distance?: number;
+      elevationGain?: number;
+      decouplingPercent?: number;
+      intensitySeconds?: number[];
     } = {},
   ) {
     const startDate = new Date(`${date}T08:00:00Z`);
@@ -137,24 +141,24 @@ describe('TrainingCheckService (PostgreSQL)', () => {
       // 300 to 310 W: about 142 lately, 148 before
       await run(lately(day), {
         bands: [
-          { kind: 'POWER', bin: 30, value: 141 + (index % 2) * 2 },
-          { kind: 'SPEED', bin: 21, value: 141 },
+          { kind: 'FLAT_POWER', bin: 30, value: 141 + (index % 2) * 2 },
+          { kind: 'FLAT_SPEED', bin: 21, value: 141 },
         ],
       });
       await run(before(day), {
         bands: [
-          { kind: 'POWER', bin: 30, value: 147 + (index % 2) * 2 },
-          { kind: 'SPEED', bin: 21, value: 141 },
+          { kind: 'FLAT_POWER', bin: 30, value: 147 + (index % 2) * 2 },
+          { kind: 'FLAT_SPEED', bin: 21, value: 141 },
         ],
       });
     }
     // A ride, and a run older than both windows: neither counts
     await run(lately(5), {
       sport: 'CYCLING',
-      bands: [{ kind: 'POWER', bin: 30, value: 100 }],
+      bands: [{ kind: 'FLAT_POWER', bin: 30, value: 100 }],
     });
     await run('2026-03-01', {
-      bands: [{ kind: 'POWER', bin: 30, value: 100 }],
+      bands: [{ kind: 'FLAT_POWER', bin: 30, value: 100 }],
     });
 
     const { fitness } = await service.getCheck(
@@ -174,16 +178,16 @@ describe('TrainingCheckService (PostgreSQL)', () => {
   it('falls back on grade-adjusted speed when few runs have power', async () => {
     for (const day of [2, 9, 16, 23]) {
       await run(lately(day), {
-        bands: [{ kind: 'SPEED', bin: 21, value: 150 }],
+        bands: [{ kind: 'FLAT_SPEED', bin: 21, value: 150 }],
       });
       await run(before(day), {
-        bands: [{ kind: 'SPEED', bin: 21, value: 150 }],
+        bands: [{ kind: 'FLAT_SPEED', bin: 21, value: 150 }],
       });
     }
     await run(lately(24), {
       bands: [
-        { kind: 'POWER', bin: 30, value: 150 },
-        { kind: 'SPEED', bin: 21, value: 150 },
+        { kind: 'FLAT_POWER', bin: 30, value: 150 },
+        { kind: 'FLAT_SPEED', bin: 21, value: 150 },
       ],
     });
     const { fitness } = await service.getCheck(
@@ -200,17 +204,22 @@ describe('TrainingCheckService (PostgreSQL)', () => {
     expect(fitness.reference).toBeCloseTo(10.75 / 3.6, 9);
   });
 
-  it('reads less drift at the same output on long runs as lasting longer', async () => {
-    const long = (value: number, movingTime = 5400) => ({
-      movingTime,
-      bands: [{ kind: 'DRIFT_MATCHED' as const, bin: 0, value }],
+  it('reads less drift on long, steady, flat runs as lasting longer', async () => {
+    const long = (decouplingPercent: number) => ({
+      movingTime: 5400,
+      distance: 18000,
+      elevationGain: 120,
+      intensitySeconds: [4800, 400, 200],
+      decouplingPercent,
     });
     await run(lately(6), long(4));
     await run(lately(20), long(4.4));
     await run(before(6), long(7));
     await run(before(20), long(7.4));
-    // Under an hour in motion: not a long run
-    await run(lately(7), long(20, 1800));
+    // Too short, too hard, and a mountain run: not what the drift reads on
+    await run(lately(7), { ...long(20), movingTime: 1800 });
+    await run(lately(8), { ...long(20), intensitySeconds: [2000, 2000, 1400] });
+    await run(lately(9), { ...long(20), elevationGain: 900 });
     const { durability } = await service.getCheck(
       athlete,
       DELETED_ATHLETE_ID,

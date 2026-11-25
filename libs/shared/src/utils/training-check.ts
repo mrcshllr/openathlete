@@ -25,9 +25,17 @@
  * - Drift of heart rate against output on long runs as durability: Maunder E
  *   et al. (2021), Sports Med 51:1619-1628; Smyth B et al. (2022), Sports
  *   Med 52:2283-2295, doi:10.1007/s40279-022-01680-5. They read it on
- *   marathons, on the flat. Comparing heart rate at the same output between
- *   the two halves of a run is our way to carry it to mountain runs, where
- *   a climb followed by its descent would otherwise read as drift.
+ *   marathons, on the flat.
+ *
+ * What a trail runner's data taught us (2026-11, 24 runs of one athlete):
+ * heart rate at the same power or grade-adjusted speed varied by 12 beats
+ * a minute between runs over whole outings, whatever the smoothing, and by
+ * about 4 on their flat stretches, close to the 3 % Buchheit reports for a
+ * standard run. And the drift of a mountain run mostly shows the climb
+ * coming before the descent, even at matched outputs. So heart rate is
+ * compared on flat stretches only, durability on flat long runs only, and
+ * the middle and spread are the median and the median deviation, which one
+ * outing with a failing heart rate sensor does not move.
  */
 
 /** Each window: the last six weeks, and the six before */
@@ -40,13 +48,16 @@ export const CHECK_MIN_LONG_RUNS = 2;
 export const CHECK_NOISE_SHARE = 0.5;
 /** A critical speed or power counts as moved beyond this share */
 export const CHECK_MODEL_CHANGE = 0.01;
-/** A long run: an hour or more */
+/** A long, steady run on the flat, where a drift of heart rate reads */
 export const CHECK_LONG_RUN_SECONDS = 60 * 60;
+export const CHECK_LOW_SHARE = 0.8;
+/** Flat: climbing this share of the distance at most */
+export const CHECK_FLAT_CLIMB = 0.02;
 
 /** A band of output counts with these runs in each window */
 const MIN_BAND_RUNS = 2;
-/** Time a run needs in such bands */
-const MIN_RUN_SECONDS = 10 * 60;
+/** Time a run needs in such bands: flat stretches are short on a trail */
+const MIN_RUN_SECONDS = 5 * 60;
 /**
  * Bands below this share of the athlete's brisk output (the 90th percentile
  * of the bands by time) are walking or standing: heart rate there follows
@@ -58,28 +69,31 @@ export type CheckStatus = 'BETTER' | 'SAME' | 'WORSE' | 'OPEN';
 
 export interface CheckComparison {
   status: CheckStatus;
-  /** Mean of the last window, null without a value */
+  /** Median of the last window, null without a value */
   current: number | null;
   previous: number | null;
-  /** Spread between single values, both windows pooled */
+  /** Spread between single values, each around the middle of its window */
   noise: number | null;
   /** Values in the last window, and in the one before */
   counts: [number, number];
 }
 
-const mean = (values: number[]) =>
-  values.length
-    ? values.reduce((sum, value) => sum + value, 0) / values.length
-    : null;
+const median = (values: number[]) => {
+  const sorted = [...values].sort((a, b) => a - b);
+  const middle = Math.floor(sorted.length / 2);
+  return sorted.length % 2
+    ? sorted[middle]
+    : (sorted[middle - 1] + sorted[middle]) / 2;
+};
 
-const squares = (values: number[], centre: number) =>
-  values.reduce((sum, value) => sum + (value - centre) ** 2, 0);
+/** Scales a median absolute deviation to the standard deviation it estimates */
+const DEVIATION_SCALE = 1.4826;
 
 /**
  * Compares the values of two windows. Open with too few of them; the same
- * when the means differ by less than half the spread between single values,
- * or by less than the noise of the means themselves, so that noise is not
- * read as progress.
+ * when their medians differ by less than half the spread between single
+ * values, or by less than the noise the two medians still carry, so that
+ * noise is not read as progress.
  */
 export function compareWindows(
   current: number[],
@@ -89,8 +103,8 @@ export function compareWindows(
     minCount = CHECK_MIN_RUNS,
   }: { higherIsBetter: boolean; minCount?: number },
 ): CheckComparison {
-  const now = mean(current);
-  const before = mean(previous);
+  const now = current.length ? median(current) : null;
+  const before = previous.length ? median(previous) : null;
   const counts: [number, number] = [current.length, previous.length];
   if (
     now === null ||
@@ -106,13 +120,16 @@ export function compareWindows(
       counts,
     };
   }
-  const freedom = current.length + previous.length - 2;
+  // Each value against the middle of its own window: a real change between
+  // the windows is not spread
   const noise =
-    freedom > 0
-      ? Math.sqrt((squares(current, now) + squares(previous, before)) / freedom)
-      : 0;
+    DEVIATION_SCALE *
+    median([
+      ...current.map((value) => Math.abs(value - now)),
+      ...previous.map((value) => Math.abs(value - before)),
+    ]);
   const change = now - before;
-  // Worthwhile, and beyond what the two means still carry of the noise:
+  // Worthwhile, and beyond what the two middles still carry of the noise:
   // with few runs, the second asks for more
   const threshold =
     noise *
@@ -151,14 +168,6 @@ export interface CardiacBand {
   heartrate: number;
 }
 
-const median = (values: number[]) => {
-  const sorted = [...values].sort((a, b) => a - b);
-  const middle = Math.floor(sorted.length / 2);
-  return sorted.length % 2
-    ? sorted[middle]
-    : (sorted[middle - 1] + sorted[middle]) / 2;
-};
-
 /** The band below which 90 % of the time was spent; bands start at zero */
 function briskBand(bands: CardiacBand[]): number {
   const seconds = new Map<number, number>();
@@ -176,8 +185,8 @@ function briskBand(bands: CardiacBand[]): number {
 }
 
 /**
- * Heart rate of each run against the athlete's usual one at the same output,
- * in beats a minute: negative when the heart beat slower than usual. Bands
+ * Heart rate of each run against the athlete's usual one at the same output
+ * on flat ground, in beats a minute: negative when the heart beat slower than usual. Bands
  * are compared one by one, since heart rate rises with output and an easy
  * week would otherwise read as fitness. Only bands run in both windows
  * count, above walking pace, and runs with enough time in them.

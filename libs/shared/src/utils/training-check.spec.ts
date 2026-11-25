@@ -24,21 +24,29 @@ describe('compareWindows', () => {
   });
 
   it('reads a change within the spread between runs as the same', () => {
-    // Means 146 and 147, spread about 4: one beat is noise
+    // Medians 146 and 147, runs 2 and 4 away from them: one beat is noise
     const result = compareWindows([142, 150, 144, 148], [143, 151, 145, 149], {
       higherIsBetter: false,
     });
     expect(result.status).toBe('SAME');
     expect(result.current).toBe(146);
     expect(result.previous).toBe(147);
-    expect(result.noise).toBeCloseTo(3.65, 2);
+    expect(result.noise).toBeCloseTo(1.4826 * 3, 6);
+  });
+
+  it('is not moved by one outing with a failing sensor', () => {
+    // 44 beats below the usual: an average would call the others worse
+    const result = compareWindows([1, -2, 3, -1, 1], [0, -44, 2, -3, 0], {
+      higherIsBetter: false,
+    });
+    expect(result).toMatchObject({ status: 'SAME', current: 1, previous: 0 });
   });
 
   it('asks for more of a change when a window holds few runs', () => {
-    // Spread about 2, means 1.5 apart: clear with eight runs a side, where the
-    // means carry half the spread, not with four, where they carry 0.7
+    // Runs 2 away from their middle, middles 2 apart: clear with eight runs
+    // a side, where the middles carry half the spread, not with four
     const low = [138, 142, 138, 142];
-    const high = [139.5, 143.5, 139.5, 143.5];
+    const high = [140, 144, 140, 144];
     expect(compareWindows(low, high, { higherIsBetter: false }).status).toBe(
       'SAME',
     );
