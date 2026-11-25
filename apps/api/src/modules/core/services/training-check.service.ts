@@ -9,7 +9,6 @@ import {
 import { Prisma } from '@openathlete/database';
 import {
   CHECK_LONG_RUN_SECONDS,
-  CHECK_LOW_SHARE,
   CHECK_MIN_LONG_RUNS,
   CHECK_WINDOW_DAYS,
   FTP_MODEL_SPORTS,
@@ -92,16 +91,14 @@ export class TrainingCheckService {
         ${runs}
           AND p.kind IN ('POWER', 'SPEED')
           AND p.seconds >= ${MIN_BAND_SECONDS}`,
-      // Long and steady, as the training focus reads durability
+      // Heart rate at the same output, late against early in a long run
       this.prisma.$queryRaw<{ current: boolean; drift: number }[]>`
-        SELECT e.start_date >= ${split} AS current,
-          a.decoupling_percent::float8 AS drift
-        FROM event_activity a
+        SELECT e.start_date >= ${split} AS current, p.value::float8 AS drift
+        FROM activity_profile_bin p
+        JOIN event_activity a ON a.event_activity_id = p.event_activity_id
         ${runs}
-          AND a.decoupling_percent IS NOT NULL
-          AND a.moving_time >= ${CHECK_LONG_RUN_SECONDS}
-          AND a.intensity_seconds[1] >= ${CHECK_LOW_SHARE} * (
-            a.intensity_seconds[1] + a.intensity_seconds[2] + a.intensity_seconds[3])`,
+          AND p.kind = 'DRIFT_MATCHED'
+          AND a.moving_time >= ${CHECK_LONG_RUN_SECONDS}`,
       this.records.runningCriticalAt(athleteId, now),
       this.records.runningCriticalAt(athleteId, split),
     ]);

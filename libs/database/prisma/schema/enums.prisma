@@ -547,6 +547,8 @@ enum ActivityProfileKind {
   DRIFT_PACE
   DRIFT_HEARTRATE
   DRIFT_POWER
+  /// Heart rate at the same output, late against early
+  DRIFT_MATCHED
 
   @@map("activity_profile_kind")
 }

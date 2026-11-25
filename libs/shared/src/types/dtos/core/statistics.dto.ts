@@ -344,7 +344,10 @@ export const trainingCheckSchema = z.object({
     current: z.number().nullable(),
     previous: z.number().nullable(),
   }),
-  /** Lasting longer: drift of heart rate on long steady runs, in percent */
+  /**
+   * Lasting longer: how much heart rate rises at the same output from the
+   * first half of a long run to the second, in percent
+   */
   durability: checkComparisonSchema,
 });
 export type TrainingCheckDto = z.infer<typeof trainingCheckSchema>;

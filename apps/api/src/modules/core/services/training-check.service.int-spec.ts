@@ -77,10 +77,12 @@ describe('TrainingCheckService (PostgreSQL)', () => {
       ...data
     }: {
       sport?: 'TRAIL_RUNNING' | 'RUNNING' | 'CYCLING';
-      bands?: { kind: 'POWER' | 'SPEED'; bin: number; value: number }[];
+      bands?: {
+        kind: 'POWER' | 'SPEED' | 'DRIFT_MATCHED';
+        bin: number;
+        value: number;
+      }[];
       movingTime?: number;
-      decouplingPercent?: number;
-      intensitySeconds?: number[];
     } = {},
   ) {
     const startDate = new Date(`${date}T08:00:00Z`);
@@ -198,26 +200,17 @@ describe('TrainingCheckService (PostgreSQL)', () => {
     expect(fitness.reference).toBeCloseTo(10.75 / 3.6, 9);
   });
 
-  it('reads less drift on long steady runs as lasting longer', async () => {
-    const long = {
-      movingTime: 5400,
-      intensitySeconds: [4800, 400, 200],
-    };
-    await run(lately(6), { ...long, decouplingPercent: 4 });
-    await run(lately(20), { ...long, decouplingPercent: 4.4 });
-    await run(before(6), { ...long, decouplingPercent: 7 });
-    await run(before(20), { ...long, decouplingPercent: 7.4 });
-    // Too short, and too hard: not what durability is read on
-    await run(lately(7), {
-      movingTime: 1800,
-      intensitySeconds: [1700, 100, 0],
-      decouplingPercent: 20,
+  it('reads less drift at the same output on long runs as lasting longer', async () => {
+    const long = (value: number, movingTime = 5400) => ({
+      movingTime,
+      bands: [{ kind: 'DRIFT_MATCHED' as const, bin: 0, value }],
     });
-    await run(lately(8), {
-      movingTime: 5400,
-      intensitySeconds: [2000, 2000, 1400],
-      decouplingPercent: 20,
-    });
+    await run(lately(6), long(4));
+    await run(lately(20), long(4.4));
+    await run(before(6), long(7));
+    await run(before(20), long(7.4));
+    // Under an hour in motion: not a long run
+    await run(lately(7), long(20, 1800));
     const { durability } = await service.getCheck(
       athlete,
       DELETED_ATHLETE_ID,

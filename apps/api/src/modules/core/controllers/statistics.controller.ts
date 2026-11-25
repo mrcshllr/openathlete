@@ -295,7 +295,7 @@ export class StatisticsController {
   @ApiOperation({
     summary: 'Training check of a runner',
     description:
-      'Whether the last six weeks of running went better than the six before, question by question: heart rate at the same output (running power when nearly every run has it, else grade-adjusted speed), critical speed or power from the bests of 16 weeks, and the drift of heart rate on long steady runs. Each answer is BETTER, SAME, WORSE, or OPEN when a window holds too few runs; a change within half the spread between runs reads as SAME.',
+      'Whether the last six weeks of running went better than the six before, question by question: heart rate at the same output (running power when nearly every run has it, else grade-adjusted speed), critical speed or power from the bests of 16 weeks, and how much heart rate rises at the same output between the two halves of a long run. Each answer is BETTER, SAME, WORSE, or OPEN when a window holds too few runs; a change within half the spread between runs reads as SAME.',
   })
   @ApiQuery({ name: 'athleteId', type: Number })
   @ApiResponse({ status: 400, description: 'Invalid athlete id' })

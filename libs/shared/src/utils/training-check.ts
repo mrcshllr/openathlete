@@ -19,7 +19,10 @@
  *   by more than 1 % before it counts here.
  * - Drift of heart rate against output on long runs as durability: Maunder E
  *   et al. (2021), Sports Med 51:1619-1628; Smyth B et al. (2022), Sports
- *   Med 52:2283-2295, doi:10.1007/s40279-022-01680-5.
+ *   Med 52:2283-2295, doi:10.1007/s40279-022-01680-5. They read it on
+ *   marathons, on the flat. Comparing heart rate at the same output between
+ *   the two halves of a run is our way to carry it to mountain runs, where
+ *   a climb followed by its descent would otherwise read as drift.
  */
 
 /** Each window: the last six weeks, and the six before */
@@ -32,14 +35,19 @@ export const CHECK_MIN_LONG_RUNS = 2;
 export const CHECK_NOISE_SHARE = 0.5;
 /** A critical speed or power counts as moved beyond this share */
 export const CHECK_MODEL_CHANGE = 0.01;
-/** A long run, as the training focus reads durability */
+/** A long run: an hour or more */
 export const CHECK_LONG_RUN_SECONDS = 60 * 60;
-export const CHECK_LOW_SHARE = 0.8;
 
 /** A band of output counts with these runs in each window */
 const MIN_BAND_RUNS = 2;
 /** Time a run needs in such bands */
 const MIN_RUN_SECONDS = 10 * 60;
+/**
+ * Bands below this share of the athlete's brisk output (the 90th percentile
+ * of the bands by time) are walking or standing: heart rate there follows
+ * what came before, not the output
+ */
+const FLOOR_SHARE = 0.5;
 
 export type CheckStatus = 'BETTER' | 'SAME' | 'WORSE' | 'OPEN';
 
@@ -137,12 +145,28 @@ const median = (values: number[]) => {
     : (sorted[middle - 1] + sorted[middle]) / 2;
 };
 
+/** The band below which 90 % of the time was spent; bands start at zero */
+function briskBand(bands: CardiacBand[]): number {
+  const seconds = new Map<number, number>();
+  let total = 0;
+  for (const row of bands) {
+    seconds.set(row.band, (seconds.get(row.band) ?? 0) + row.seconds);
+    total += row.seconds;
+  }
+  let passed = 0;
+  for (const [band, time] of [...seconds].sort(([a], [b]) => a - b)) {
+    passed += time;
+    if (passed >= total * 0.9) return band;
+  }
+  return 0;
+}
+
 /**
  * Heart rate of each run against the athlete's usual one at the same output,
  * in beats a minute: negative when the heart beat slower than usual. Bands
  * are compared one by one, since heart rate rises with output and an easy
  * week would otherwise read as fitness. Only bands run in both windows
- * count, and runs with enough time in them.
+ * count, above walking pace, and runs with enough time in them.
  */
 export function cardiacScores(bands: CardiacBand[]): {
   current: number[];
@@ -150,8 +174,10 @@ export function cardiacScores(bands: CardiacBand[]): {
   /** The band with the most time, to name the output the answer is about */
   referenceBand: number | null;
 } {
+  const floor = briskBand(bands) * FLOOR_SHARE;
   const byBand = new Map<number, CardiacBand[]>();
   for (const row of bands) {
+    if (row.band < floor) continue;
     byBand.set(row.band, [...(byBand.get(row.band) ?? []), row]);
   }
   const usual = new Map<number, number>();

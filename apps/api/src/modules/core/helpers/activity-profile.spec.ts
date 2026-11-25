@@ -68,6 +68,38 @@ describe('activityProfile', () => {
     ).toBeCloseTo(10, 0);
   });
 
+  it('reads the drift at the same power, whatever the terrain', () => {
+    // A mountain run: mostly climbing at 300 W early, mostly descending at
+    // 150 W late, with some of each in both halves. At 300 W the heart
+    // beats 150 early and 156 late; the descents are below the floor.
+    const stream = steady(85, 2);
+    const half = (85 * 60 + 300) / 2;
+    const climbing = (t: number) =>
+      t < half ? t % 1200 < 900 : t % 1200 < 400;
+    stream.watts = stream.time!.map((t) => (climbing(t) ? 305 : 105));
+    stream.heartrate = stream.time!.map((t) =>
+      climbing(t) ? (t < half ? 150 : 156) : t < half ? 120 : 140,
+    );
+    stream.gap = stream.time!.map((t) => (climbing(t) ? 3 : 1));
+    const profile = activityProfile(stream, SPORT_TYPE.TRAIL_RUNNING);
+    const matched = profile.find(({ kind }) => kind === 'DRIFT_MATCHED');
+    expect(matched?.value).toBeCloseTo(4, 6);
+    // The time the two halves share at 300 W
+    expect(matched?.seconds).toBeGreaterThanOrEqual(600);
+  });
+
+  it('has no matched drift without the same outputs in both halves', () => {
+    const stream = steady(85, 2);
+    const half = (85 * 60 + 300) / 2;
+    stream.watts = stream.time!.map((t) => (t < half ? 305 : 205));
+    stream.heartrate = stream.time!.map(() => 150);
+    expect(
+      activityProfile(stream, SPORT_TYPE.TRAIL_RUNNING).some(
+        ({ kind }) => kind === 'DRIFT_MATCHED',
+      ),
+    ).toBe(false);
+  });
+
   it('has no drift on a short outing', () => {
     const stream = steady(30, 3);
     stream.gap = stream.time!.map(() => 3);

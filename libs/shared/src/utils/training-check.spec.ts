@@ -127,6 +127,23 @@ describe('cardiacScores', () => {
     ]);
   });
 
+  it('keeps walking out: bands far below the brisk output', () => {
+    const scores = cardiacScores([
+      band(1, true, 30, 142),
+      band(2, true, 30, 144),
+      band(3, false, 30, 148),
+      band(4, false, 30, 150),
+      // Hiking up a steep slope: little output, a heart rate of its own
+      band(1, true, 4, 150, 3000),
+      band(2, true, 4, 150, 3000),
+      band(3, false, 4, 120, 3000),
+      band(4, false, 4, 120, 3000),
+    ]);
+    expect(scores.referenceBand).toBe(30);
+    expect(scores.current).toEqual([-4, -2]);
+    expect(scores.previous).toEqual([2, 4]);
+  });
+
   it('leaves out runs with little time in the shared bands', () => {
     const scores = cardiacScores([
       band(1, true, 30, 142),

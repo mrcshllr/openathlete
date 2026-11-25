@@ -106,6 +106,100 @@ function outputBins(
   }));
 }
 
+/** A band counts in a half of the outing with this much time */
+const MATCHED_BAND_SECONDS = 60;
+/** Time the two halves need at the same outputs */
+const MATCHED_MIN_SECONDS = 10 * 60;
+/**
+ * Bands below this share of the outing's brisk output (its 90th percentile
+ * by time) are walking or standing: heart rate there follows what came
+ * before, not the output
+ */
+const MATCHED_FLOOR_SHARE = 0.5;
+
+/**
+ * How much heart rate rose at the same output from the first half of a long
+ * outing to the second, in percent. Whole-outing decoupling compares a climb
+ * with the descent that follows it on a mountain run; matching the bands of
+ * output keeps the terrain out of the comparison.
+ */
+function matchedDrift(
+  stream: ActivityStream,
+  output: number[],
+  band: (value: number) => number,
+): ProfileBin[] {
+  const { time, heartrate } = stream;
+  if (!time?.length || !heartrate?.length) return [];
+  const n = Math.min(time.length, heartrate.length, output.length);
+  const start = time[0] + HEART_RATE_WARMUP_S;
+  const end = time[n - 1];
+  if (end - time[0] < DRIFT_MIN_SECONDS) return [];
+  const middle = (start + end) / 2;
+
+  type Half = { seconds: number; beats: number };
+  const bands = new Map<number, [Half, Half]>();
+  for (let i = 0; i < n - 1; i++) {
+    const seconds = time[i + 1] - time[i];
+    if (
+      time[i] < start ||
+      !(seconds > 0) ||
+      !(heartrate[i] > 0) ||
+      !(output[i] > 0)
+    ) {
+      continue;
+    }
+    const key = band(output[i]);
+    const halves = bands.get(key) ?? [
+      { seconds: 0, beats: 0 },
+      { seconds: 0, beats: 0 },
+    ];
+    const half = halves[time[i] < middle ? 0 : 1];
+    half.seconds += seconds;
+    half.beats += heartrate[i] * seconds;
+    bands.set(key, halves);
+  }
+
+  const sorted = [...bands].sort(([a], [b]) => a - b);
+  const total = sorted.reduce(
+    (sum, [, [first, second]]) => sum + first.seconds + second.seconds,
+    0,
+  );
+  let passed = 0;
+  let brisk = 0;
+  for (const [key, [first, second]] of sorted) {
+    passed += first.seconds + second.seconds;
+    brisk = key;
+    if (passed >= total * 0.9) break;
+  }
+
+  let weight = 0;
+  let rise = 0;
+  let base = 0;
+  for (const [key, [first, second]] of sorted) {
+    if (
+      key < brisk * MATCHED_FLOOR_SHARE ||
+      first.seconds < MATCHED_BAND_SECONDS ||
+      second.seconds < MATCHED_BAND_SECONDS
+    ) {
+      continue;
+    }
+    const shared = Math.min(first.seconds, second.seconds);
+    const early = first.beats / first.seconds;
+    weight += shared;
+    base += shared * early;
+    rise += shared * (second.beats / second.seconds - early);
+  }
+  if (weight < MATCHED_MIN_SECONDS || base <= 0) return [];
+  return [
+    {
+      kind: 'DRIFT_MATCHED',
+      bin: 0,
+      seconds: weight,
+      value: (rise / base) * 100,
+    },
+  ];
+}
+
 /** Time-weighted mean of a series between two moments */
 function meanBetween(
   values: number[],
@@ -177,5 +271,15 @@ export function activityProfile(
           ...drift('DRIFT_HEARTRATE', heartrate, time, 1),
         ]
       : []),
+    // On power where there is some, as for the bands: it holds on slopes
+    ...(riding || powered
+      ? matchedDrift(stream, watts!, (power) =>
+          Math.floor(power / POWER_BAND_W),
+        )
+      : running && gap
+        ? matchedDrift(stream, gap, (speed) =>
+            Math.floor(speed * 3.6 * SPEED_BANDS_PER_KMH),
+          )
+        : []),
   ];
 }
