@@ -43,15 +43,17 @@ describe('compareWindows', () => {
   });
 
   it('asks for more of a change when a window holds few runs', () => {
-    // Runs 2 away from their middle, middles 2 apart: clear with eight runs
-    // a side, where the middles carry half the spread, not with four
+    // Runs 2 away from their median, medians 3 apart. With six and four
+    // runs (the first real case) the medians are not sure enough; with
+    // twelve a side they are
     const low = [138, 142, 138, 142];
-    const high = [140, 144, 140, 144];
-    expect(compareWindows(low, high, { higherIsBetter: false }).status).toBe(
-      'SAME',
-    );
+    const high = [141, 145, 141, 145];
     expect(
-      compareWindows([...low, ...low], [...high, ...high], {
+      compareWindows([...low, 138, 142], high, { higherIsBetter: false })
+        .status,
+    ).toBe('SAME');
+    expect(
+      compareWindows([...low, ...low, ...low], [...high, ...high, ...high], {
         higherIsBetter: false,
       }).status,
     ).toBe('BETTER');

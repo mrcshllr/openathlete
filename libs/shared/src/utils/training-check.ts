@@ -15,8 +15,8 @@
  *   the athlete's own variation as the smallest worthwhile change, that a
  *   change is unclear while its noise overlaps both zero and that change,
  *   and that averaging n measures divides the noise by the root of n. Here:
- *   half the spread between the athlete's runs, and more than the noise
- *   left in the two means.
+ *   half the spread between the athlete's runs, and clear of the noise
+ *   left in the two medians at about four chances in five.
  * - For performance, Hopkins WG (2004), Sportscience 8:1-7, sets the
  *   smallest worthwhile change at 0.3 of the variation between an elite
  *   athlete's competitions, about 0.3 to 1 % of power. He does not speak of
@@ -88,6 +88,13 @@ const median = (values: number[]) => {
 
 /** Scales a median absolute deviation to the standard deviation it estimates */
 const DEVIATION_SCALE = 1.4826;
+/** A median is less sure than a mean of as many values: its standard error */
+const MEDIAN_ERROR = 1.2533;
+/**
+ * Standard errors a change has to clear: about four chances in five that it
+ * is no accident. "Worse" on a coin toss would do more harm than waiting.
+ */
+const CLEAR = 1.2816;
 
 /**
  * Compares the values of two windows. Open with too few of them; the same
@@ -129,13 +136,15 @@ export function compareWindows(
       ...previous.map((value) => Math.abs(value - before)),
     ]);
   const change = now - before;
-  // Worthwhile, and beyond what the two middles still carry of the noise:
+  // Worthwhile, and beyond what the two medians still carry of the noise:
   // with few runs, the second asks for more
   const threshold =
     noise *
     Math.max(
       CHECK_NOISE_SHARE,
-      Math.sqrt(1 / current.length + 1 / previous.length),
+      CLEAR *
+        MEDIAN_ERROR *
+        Math.sqrt(1 / current.length + 1 / previous.length),
     );
   const status: CheckStatus =
     change === 0 || Math.abs(change) <= threshold
