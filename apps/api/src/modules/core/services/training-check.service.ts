@@ -59,13 +59,15 @@ export class TrainingCheckService {
 
   async getCheck(
     user: AuthUser,
-    athleteId: number,
+    /** Absent: the athlete asking */
+    asked: number | undefined,
     now = new Date(),
   ): Promise<TrainingCheckDto> {
     const athlete = await this.prisma.athlete.findUnique({
-      where: { athleteId },
+      where: { athleteId: asked ?? user.athlete?.athleteId ?? 0 },
     });
     if (!athlete) throw new NotFoundException('Athlete not found');
+    const { athleteId } = athlete;
     const ability = await this.abilities.getFor({ user });
     if (!ability.can('read', subject('Athlete', athlete))) {
       throw new ForbiddenException('Not allowed to access this athlete');

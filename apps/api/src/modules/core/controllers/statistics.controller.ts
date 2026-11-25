@@ -17,11 +17,13 @@ import {
   GetStatisticsOverviewQueryDto,
   GetStatisticsSectionQueryDto,
   GetStatisticsTrendsQueryDto,
+  GetTrainingCheckQueryDto,
   LabResponse,
   getStatisticsFiltersQuerySchema,
   getStatisticsOverviewQuerySchema,
   getStatisticsSectionQuerySchema,
   getStatisticsTrendsQuerySchema,
+  getTrainingCheckQuerySchema,
   statisticsGranularity,
 } from '@openathlete/shared';
 
@@ -297,14 +299,19 @@ export class StatisticsController {
     description:
       'Whether the last six weeks of running went better than the six before, question by question: heart rate at the same output on the flat stretches of the runs (running power when nearly every run has it, else grade-adjusted speed), critical speed or power from the bests of 16 weeks, and the decoupling of heart rate on long, steady, flat runs. Each answer is BETTER, SAME, WORSE, or OPEN when a window holds too few runs; a change within half the spread between runs reads as SAME.',
   })
-  @ApiQuery({ name: 'athleteId', type: Number })
+  @ApiQuery({
+    name: 'athleteId',
+    type: Number,
+    required: false,
+    description: 'Absent: the athlete asking',
+  })
   @ApiResponse({ status: 400, description: 'Invalid athlete id' })
   @ApiResponse({ status: 403, description: 'Not allowed to read the athlete' })
   @ApiResponse({ status: 404, description: 'Athlete not found' })
   getCheck(
     @JwtUser() user: AuthUser,
-    @Query(new ZodValidationPipe(getStatisticsFiltersQuerySchema))
-    { athleteId }: GetStatisticsFiltersQueryDto,
+    @Query(new ZodValidationPipe(getTrainingCheckQuerySchema))
+    { athleteId }: GetTrainingCheckQueryDto,
   ) {
     return this.trainingCheck.getCheck(user, athleteId);
   }

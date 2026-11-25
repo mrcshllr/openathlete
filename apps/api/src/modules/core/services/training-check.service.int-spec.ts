@@ -256,6 +256,15 @@ describe('TrainingCheckService (PostgreSQL)', () => {
     expect(speed.current! / speed.previous!).toBeCloseTo(1.05, 2);
   });
 
+  it('answers for the athlete asking when none is named', async () => {
+    const check = await service.getCheck(athlete, undefined, NOW);
+    expect(check.fitness.status).toBe('OPEN');
+    // A coach without an athlete of their own names one
+    await expect(service.getCheck(stranger, undefined, NOW)).rejects.toThrow(
+      'Athlete not found',
+    );
+  });
+
   it('refuses an athlete the user cannot read', async () => {
     await expect(
       service.getCheck(stranger, DELETED_ATHLETE_ID, NOW),

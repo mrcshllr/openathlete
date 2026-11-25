@@ -303,6 +303,14 @@ export type StatisticsEfficiencyDto = z.infer<
   typeof statisticsEfficiencySchema
 >;
 
+export const getTrainingCheckQuerySchema = z.object({
+  /** Absent: the athlete asking */
+  athleteId: z.coerce.number().int().positive().optional(),
+});
+export type GetTrainingCheckQueryDto = z.infer<
+  typeof getTrainingCheckQuerySchema
+>;
+
 const checkStatusSchema = z.enum(['BETTER', 'SAME', 'WORSE', 'OPEN']);
 const checkComparisonSchema = z.object({
   status: checkStatusSchema,
