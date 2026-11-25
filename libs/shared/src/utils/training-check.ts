@@ -10,13 +10,18 @@
  *   (2014), J Strength Cond Res 28(4):902-908,
  *   doi:10.1519/JSC.0000000000000349; Shushan T et al. (2023), Sports Med
  *   Open 9:21, doi:10.1186/s40798-023-00564-w.
- * - A change counts once it is larger than the noise of the measure:
- *   Hopkins WG (2004), Sportscience 8:1-7; Buchheit (2014) above. Half the
- *   athlete's own spread between runs is our reading of it, not a figure
- *   of theirs.
- * - Smallest worthwhile changes of performance run from about 0.3 to 1 % of
- *   power (Hopkins 2004): a critical speed or power read from training moves
- *   by more than 1 % before it counts here.
+ * - A change counts once it is worthwhile and clear of the noise. Buchheit
+ *   (2014) reports that, for one athlete, authors have used 0.5 or 1 times
+ *   the athlete's own variation as the smallest worthwhile change, that a
+ *   change is unclear while its noise overlaps both zero and that change,
+ *   and that averaging n measures divides the noise by the root of n. Here:
+ *   half the spread between the athlete's runs, and more than the noise
+ *   left in the two means.
+ * - For performance, Hopkins WG (2004), Sportscience 8:1-7, sets the
+ *   smallest worthwhile change at 0.3 of the variation between an elite
+ *   athlete's competitions, about 0.3 to 1 % of power. He does not speak of
+ *   recreational athletes: taking the upper end, 1 %, for a critical speed
+ *   or power read from training is our assumption.
  * - Drift of heart rate against output on long runs as durability: Maunder E
  *   et al. (2021), Sports Med 51:1619-1628; Smyth B et al. (2022), Sports
  *   Med 52:2283-2295, doi:10.1007/s40279-022-01680-5. They read it on
@@ -72,8 +77,9 @@ const squares = (values: number[], centre: number) =>
 
 /**
  * Compares the values of two windows. Open with too few of them; the same
- * when the means differ by less than a share of the spread between single
- * values, so that noise is not read as progress.
+ * when the means differ by less than half the spread between single values,
+ * or by less than the noise of the means themselves, so that noise is not
+ * read as progress.
  */
 export function compareWindows(
   current: number[],
@@ -106,8 +112,16 @@ export function compareWindows(
       ? Math.sqrt((squares(current, now) + squares(previous, before)) / freedom)
       : 0;
   const change = now - before;
+  // Worthwhile, and beyond what the two means still carry of the noise:
+  // with few runs, the second asks for more
+  const threshold =
+    noise *
+    Math.max(
+      CHECK_NOISE_SHARE,
+      Math.sqrt(1 / current.length + 1 / previous.length),
+    );
   const status: CheckStatus =
-    change === 0 || Math.abs(change) <= CHECK_NOISE_SHARE * noise
+    change === 0 || Math.abs(change) <= threshold
       ? 'SAME'
       : change > 0 === higherIsBetter
         ? 'BETTER'

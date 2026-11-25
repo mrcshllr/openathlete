@@ -34,6 +34,21 @@ describe('compareWindows', () => {
     expect(result.noise).toBeCloseTo(3.65, 2);
   });
 
+  it('asks for more of a change when a window holds few runs', () => {
+    // Spread about 2, means 1.5 apart: clear with eight runs a side, where the
+    // means carry half the spread, not with four, where they carry 0.7
+    const low = [138, 142, 138, 142];
+    const high = [139.5, 143.5, 139.5, 143.5];
+    expect(compareWindows(low, high, { higherIsBetter: false }).status).toBe(
+      'SAME',
+    );
+    expect(
+      compareWindows([...low, ...low], [...high, ...high], {
+        higherIsBetter: false,
+      }).status,
+    ).toBe('BETTER');
+  });
+
   it('follows the direction that is better', () => {
     const lower = [140, 141, 139, 140];
     const higher = [146, 147, 145, 146];
