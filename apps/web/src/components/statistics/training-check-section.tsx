@@ -32,6 +32,8 @@ import { TrainingCheckCard } from './training-check-card';
 const DAY_MS = 24 * 3600 * 1000;
 const COLOR = 'var(--chart-2)';
 const SECOND = 'var(--chart-4)';
+/** Days named under each chart */
+const TICKS = 7;
 
 /** A calendar day as a moment on a time axis */
 const at = (date: string) => new Date(`${date}T00:00:00Z`).getTime();
@@ -74,7 +76,12 @@ function Course({
     month: 'short',
     timeZone: 'UTC',
   });
+  const from = history.from.getTime();
   const to = history.to.getTime();
+  const ticks = Array.from(
+    { length: TICKS },
+    (_, index) => from + ((to - from) * index) / (TICKS - 1),
+  );
   const split = to - CHECK_WINDOW_DAYS * DAY_MS;
   const before = split - CHECK_WINDOW_DAYS * DAY_MS;
   const filled = points.filter((point) =>
@@ -112,10 +119,12 @@ function Course({
                 dataKey="x"
                 type="number"
                 scale="time"
-                domain={[history.from.getTime(), to]}
+                domain={[from, to]}
+                // The same days under every chart, whatever its points
+                ticks={ticks}
                 tickFormatter={(x: number) => day.format(new Date(x))}
                 tick={{ fontSize: 11 }}
-                minTickGap={40}
+                minTickGap={24}
               />
               <YAxis
                 yAxisId="left"
@@ -131,6 +140,10 @@ function Course({
                   width={40}
                   domain={['auto', 'auto']}
                   tick={{ fontSize: 11 }}
+                  allowDecimals={false}
+                  tickFormatter={(value: number) =>
+                    series.find((item) => item.right)!.format(value)
+                  }
                 />
               )}
               <ReferenceArea
@@ -202,6 +215,21 @@ function Course({
               })}
             </ComposedChart>
           </ChartContainer>
+        )}
+        {series.length > 1 && filled.length > 0 && (
+          // Two measures on one chart: which line is which, and its axis
+          <ul className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+            {series.map((item) => (
+              <li key={item.key} className="flex items-center gap-1.5">
+                <span
+                  aria-hidden="true"
+                  className="size-2 rounded-full"
+                  style={{ background: item.color ?? COLOR }}
+                />
+                {item.label}
+              </li>
+            ))}
+          </ul>
         )}
         {children && (
           <p className="text-xs text-muted-foreground">{children}</p>
