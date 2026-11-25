@@ -313,7 +313,7 @@ describe('StatisticsService (PostgreSQL)', () => {
 
   async function profile(
     eventId: number,
-    kind: 'GRADE' | 'SPEED' | 'DRIFT_PACE',
+    kind: 'GRADE' | 'SPEED' | 'POWER' | 'DRIFT_PACE',
     bin: number,
     seconds: number,
     value: number,
@@ -485,6 +485,10 @@ describe('StatisticsService (PostgreSQL)', () => {
         `2026-03-1${index}T08:00:00Z`,
       );
       await profile(session.eventId, 'SPEED', 21, 600, value);
+      // Runs carry power bands too, for the training check: more of them
+      // than speed bands must not turn this chart to watts
+      await profile(session.eventId, 'POWER', 30, 600, value);
+      await profile(session.eventId, 'POWER', 31, 600, value);
     }
     expect(
       await service.getCardiacCost(athlete, {

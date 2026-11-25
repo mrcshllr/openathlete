@@ -155,6 +155,9 @@ export function activityProfile(
   const cycling = CYCLING.has(sport);
   if (!running && !cycling && !CLIMBING.has(sport)) return [];
   const riding = cycling && !!watts?.some((value) => value > 0);
+  // Running power already includes climbing: heart rate against it reads
+  // on trails, where grade-adjusted speed is at its weakest
+  const powered = running && !!watts?.some((value) => value > 0);
   return [
     ...gradeBins(stream),
     ...(running && gap
@@ -162,7 +165,7 @@ export function activityProfile(
           Math.floor(speed * 3.6 * SPEED_BANDS_PER_KMH),
         )
       : []),
-    ...(riding
+    ...(riding || powered
       ? outputBins(stream, 'POWER', watts!, (power) =>
           Math.floor(power / POWER_BAND_W),
         )

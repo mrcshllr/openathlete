@@ -465,7 +465,11 @@ export class StatisticsService {
     await this.assertCanRead(user, query.athleteId);
     const [speed, power] = await Promise.all([
       this.profileQuantiles('SPEED', query, 0.5),
-      this.profileQuantiles('POWER', query, 10),
+      // Runs have power bands too, for the training check: this chart keeps
+      // reading them by speed
+      runEfficiencySports(query.sport).length
+        ? []
+        : this.profileQuantiles('POWER', query, 10),
     ]);
     return power.length > speed.length
       ? { unit: 'power', bins: power }

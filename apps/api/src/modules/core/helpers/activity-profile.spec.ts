@@ -89,6 +89,21 @@ describe('activityProfile', () => {
     expect(power).toMatchObject({ bin: 20, value: 140 });
   });
 
+  it('reads heart rate by running power too, next to speed', () => {
+    const stream = steady(20, 3);
+    stream.gap = stream.time!.map(() => 3);
+    stream.watts = stream.time!.map(() => 305);
+    stream.heartrate = stream.time!.map(() => 150);
+    const kinds = activityProfile(stream, SPORT_TYPE.TRAIL_RUNNING).flatMap(
+      ({ kind, bin, value }) =>
+        kind === 'POWER' || kind === 'SPEED' ? [{ kind, bin, value }] : [],
+    );
+    expect(kinds).toEqual([
+      { kind: 'SPEED', bin: 21, value: 150 },
+      { kind: 'POWER', bin: 30, value: 150 },
+    ]);
+  });
+
   it('stays out of sports slope and pace do not describe', () => {
     expect(activityProfile(steady(30, 1, 0.1), SPORT_TYPE.SWIMMING)).toEqual(
       [],

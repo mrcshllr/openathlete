@@ -16,7 +16,8 @@ import { ActivityPipelineContext, ActivityProcessor } from '../types';
  */
 // Selfhost: 7. This instance computed 5 and 6 with earlier run efficiency
 // figures; main's 5 recomputes them from 4, with its final formulas
-export const INTENSITY_VERSION = 7;
+// 8: heart rate by running power, for the training check
+export const INTENSITY_VERSION = 8;
 
 /** Reads the recording once, so statistics never have to. */
 @Injectable()
