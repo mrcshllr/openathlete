@@ -26,7 +26,8 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '../ui/chart';
 import { SkeletonChart } from '../ui/skeleton';
-import { TrainingCheckCard, formatRunPace } from './training-check-card';
+import { TrainingCheckCard } from './training-check-card';
+import { formatRunPace } from './training-check-look';
 
 const DAY_MS = 24 * 3600 * 1000;
 const COLOR = 'var(--chart-2)';

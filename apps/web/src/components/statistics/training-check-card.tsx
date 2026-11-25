@@ -4,14 +4,6 @@ import { getLocale } from '@/paraglide/runtime';
 import { getPath } from '@/routes/paths';
 import { getDateLocale } from '@/utils/locales';
 import { cn } from '@/utils/shadcn';
-import {
-  ArrowDown,
-  ArrowUp,
-  Check,
-  CircleDashed,
-  Equal,
-  TriangleAlert,
-} from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 import {
@@ -19,63 +11,20 @@ import {
   CHECK_MIN_LONG_RUNS,
   CHECK_MIN_RUNS,
   CHECK_MIN_WEEK_DAYS,
-  CheckStatus,
   CheckSummary,
   TrainingCheckDto,
   checkSummary,
-  formatSpeed,
-  formatSpeedUnit,
 } from '@openathlete/shared';
 
 import { GarminAttribution } from '../garmin-attribution/garmin-attribution';
 import { SectionLabel } from '../ui/section-label';
 import { Skeleton } from '../ui/skeleton';
 import { MetricInfo } from './metric-info';
-
-// Arrows and words carry the answer; the tints differ in lightness as well
-export type CheckLook = CheckStatus | TrainingCheckDto['design']['status'];
-export const CHECK_STATUS: Record<
-  CheckLook,
-  { icon: typeof ArrowUp; label: () => string; tint: string; text: string }
-> = {
-  BETTER: {
-    icon: ArrowUp,
-    label: m.check_status_better,
-    tint: 'bg-teal-100 dark:bg-teal-950',
-    text: 'text-teal-800 dark:text-teal-300',
-  },
-  SAME: {
-    icon: Equal,
-    label: m.check_status_same,
-    tint: 'bg-muted',
-    text: 'text-muted-foreground',
-  },
-  WORSE: {
-    icon: ArrowDown,
-    label: m.check_status_worse,
-    tint: 'bg-orange-100 dark:bg-orange-950',
-    text: 'text-orange-800 dark:text-orange-300',
-  },
-  // How the weeks were built has no better or worse: fine, or one note
-  FINE: {
-    icon: Check,
-    label: m.check_status_fine,
-    tint: 'bg-muted',
-    text: 'text-muted-foreground',
-  },
-  NOTE: {
-    icon: TriangleAlert,
-    label: m.check_status_note,
-    tint: 'bg-orange-100 dark:bg-orange-950',
-    text: 'text-orange-800 dark:text-orange-300',
-  },
-  OPEN: {
-    icon: CircleDashed,
-    label: m.check_status_open,
-    tint: 'border border-dashed',
-    text: 'text-muted-foreground',
-  },
-};
+import {
+  CHECK_STATUS,
+  type CheckLook,
+  formatRunPace,
+} from './training-check-look';
 
 const number = (value: number, digits = 0) =>
   new Intl.NumberFormat(getLocale(), {
@@ -83,9 +32,6 @@ const number = (value: number, digits = 0) =>
   }).format(value);
 
 const watts = (value: number) => `${number(value)} W`;
-/** A speed in m/s as a pace */
-export const formatRunPace = (speed: number) =>
-  `${formatSpeed(speed, 'min/km')} ${formatSpeedUnit('min/km')}`;
 const percent = (value: number, digits = 1) => `${number(value, digits)} %`;
 
 /** What the heart rate is compared at: watts, or a pace */

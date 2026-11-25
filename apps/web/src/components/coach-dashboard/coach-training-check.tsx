@@ -6,7 +6,7 @@ import { Link } from 'react-router-dom';
 
 import { TrainingCheckAthletesDto } from '@openathlete/shared';
 
-import { CHECK_STATUS, CheckLook } from '../statistics/training-check-card';
+import { CHECK_STATUS, CheckLook } from '../statistics/training-check-look';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 
 type Answers = TrainingCheckAthletesDto['athletes'][number];
