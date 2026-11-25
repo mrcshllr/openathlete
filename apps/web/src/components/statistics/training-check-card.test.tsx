@@ -177,7 +177,7 @@ describe('TrainingCheckCard', () => {
     );
     expect(row('fitness').textContent).toContain('check_fitness_open 4|6|2');
     expect(row('speed').textContent).toContain(
-      'check_speed_open performance_critical_power|333 W',
+      'check_speed_open statistics_critical_power|333 W',
     );
     expect(row('durability').textContent).toContain(
       'check_durability_open 2|0|0',
@@ -294,7 +294,7 @@ describe('TrainingCheckCard', () => {
       }),
     );
     expect(row('speed').textContent).toContain(
-      'check_speed_better performance_critical_power|320 W|315 W',
+      'check_speed_better statistics_critical_power|320 W|315 W',
     );
     expect(row('durability').textContent).toContain(
       'check_durability_worse 7.2 %|4.1 %',

@@ -23,10 +23,11 @@ import {
   CheckSummary,
   TrainingCheckDto,
   checkSummary,
+  formatSpeed,
+  formatSpeedUnit,
 } from '@openathlete/shared';
 
 import { GarminAttribution } from '../garmin-attribution/garmin-attribution';
-import { formatPace } from '../performance-model/model-format';
 import { SectionLabel } from '../ui/section-label';
 import { Skeleton } from '../ui/skeleton';
 import { MetricInfo } from './metric-info';
@@ -82,12 +83,15 @@ const number = (value: number, digits = 0) =>
   }).format(value);
 
 const watts = (value: number) => `${number(value)} W`;
+/** A speed in m/s as a pace */
+export const formatRunPace = (speed: number) =>
+  `${formatSpeed(speed, 'min/km')} ${formatSpeedUnit('min/km')}`;
 const percent = (value: number, digits = 1) => `${number(value, digits)} %`;
 
 /** What the heart rate is compared at: watts, or a pace */
 function fitnessLoad({ basis, reference }: TrainingCheckDto['fitness']) {
   if (reference === null) return '';
-  return basis === 'POWER' ? watts(reference) : formatPace(reference);
+  return basis === 'POWER' ? watts(reference) : formatRunPace(reference);
 }
 
 function fitnessText(fitness: TrainingCheckDto['fitness']): string {
@@ -113,11 +117,11 @@ function fitnessText(fitness: TrainingCheckDto['fitness']): string {
 }
 
 function speedText(speed: TrainingCheckDto['speed']): string {
-  const format = speed.kind === 'speed' ? formatPace : watts;
+  const format = speed.kind === 'speed' ? formatRunPace : watts;
   const name =
     speed.kind === 'speed'
-      ? m.performance_critical_pace()
-      : m.performance_critical_power();
+      ? m.statistics_critical_speed()
+      : m.statistics_critical_power();
   if (speed.current === null) return m.check_speed_open_none();
   const current = format(speed.current);
   if (speed.status === 'OPEN' || speed.previous === null) {

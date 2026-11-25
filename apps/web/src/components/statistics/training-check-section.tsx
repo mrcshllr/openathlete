@@ -23,11 +23,10 @@ import {
   TrainingCheckHistoryDto,
 } from '@openathlete/shared';
 
-import { formatPace } from '../performance-model/model-format';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '../ui/chart';
 import { SkeletonChart } from '../ui/skeleton';
-import { TrainingCheckCard } from './training-check-card';
+import { TrainingCheckCard, formatRunPace } from './training-check-card';
 
 const DAY_MS = 24 * 3600 * 1000;
 const COLOR = 'var(--chart-2)';
@@ -263,7 +262,7 @@ export function TrainingCheckSection({ athleteId }: { athleteId: number }) {
       ? ''
       : history.fitness.basis === 'POWER'
         ? `${number(history.fitness.reference)} W`
-        : formatPace(history.fitness.reference);
+        : formatRunPace(history.fitness.reference);
   const beats = (value: number) => number(value, 1);
   const percent = (value: number) => `${number(value, 1)} %`;
 
@@ -306,11 +305,11 @@ export function TrainingCheckSection({ athleteId }: { athleteId: number }) {
             {
               key: 'speed',
               label: onSpeed
-                ? m.performance_critical_pace()
-                : m.performance_critical_power(),
+                ? m.statistics_critical_speed()
+                : m.statistics_critical_power(),
               kind: 'line',
               format: onSpeed
-                ? (value) => formatPace(value)
+                ? (value) => formatRunPace(value)
                 : (value) => `${number(value)} W`,
             },
           ]}
