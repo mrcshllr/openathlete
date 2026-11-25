@@ -318,6 +318,7 @@ export class RecordService {
     type: 'POWER' | 'GAP_SPEED',
     sports: readonly string[],
     from: Date,
+    to?: Date,
   ): Promise<ModelPointDto[]> {
     // The most watts over a duration, the least seconds over a distance
     const each =
@@ -337,6 +338,7 @@ export class RecordService {
         AND r.type::text = ${type}
         AND a.sport::text IN (${Prisma.join([...sports])})
         AND r.date >= ${from}
+        ${to ? Prisma.sql`AND r.date <= ${to}` : Prisma.empty}
         AND ${notExcluded}
       ORDER BY ${best}`;
     return rows.map((row) => ({
@@ -347,6 +349,29 @@ export class RecordService {
       eventId: row.event_id,
       activityName: row.activity_name,
     }));
+  }
+
+  /**
+   * What a runner holds for long, from the bests of the 16 weeks up to a
+   * date: critical speed on grade-adjusted pace (null when the short bests
+   * were not all out) and critical power. For the training check, which
+   * compares two dates; the caller has checked access.
+   */
+  async runningCriticalAt(
+    athleteId: number,
+    to: Date,
+  ): Promise<{ speed: number | null; power: number | null }> {
+    const from = new Date(to.getTime() - PERFORMANCE_MODEL_DAYS * 86_400_000);
+    const { running } = FTP_MODEL_SPORTS;
+    const [pace, power] = await Promise.all([
+      this.bestEfforts(athleteId, 'GAP_SPEED', running, from, to),
+      this.bestEfforts(athleteId, 'POWER', running, from, to),
+    ]);
+    const speed = fitCriticalSpeed(pace.filter(hasDistance));
+    return {
+      speed: speed && isReliableSpeedModel(speed) ? speed.critical : null,
+      power: fitCriticalPower(power.filter(hasDuration))?.critical ?? null,
+    };
   }
 
   /**
