@@ -166,15 +166,23 @@ function recoveryText(recovery: TrainingCheckDto['recovery']): string {
   const parts = (['variability', 'restingHeartrate'] as const).flatMap(
     (key) => {
       const signal = recovery[key];
-      return signal
-        ? [
-            SIGNAL_TEXT[key][signal.state]({
-              value: number(signal.week),
-              low: number(signal.low),
-              high: number(signal.high),
-            }),
-          ]
-        : [];
+      if (!signal) return [];
+      // Whole numbers, unless they would put a week outside its range on
+      // the edge of it: "43, below 43 to 46"
+      const whole = (value: number) => Math.round(value);
+      const digits =
+        signal.state !== 'NORMAL' &&
+        (whole(signal.week) === whole(signal.low) ||
+          whole(signal.week) === whole(signal.high))
+          ? 1
+          : 0;
+      return [
+        SIGNAL_TEXT[key][signal.state]({
+          value: number(signal.week, digits),
+          low: number(signal.low, digits),
+          high: number(signal.high, digits),
+        }),
+      ];
     },
   );
   return parts.length

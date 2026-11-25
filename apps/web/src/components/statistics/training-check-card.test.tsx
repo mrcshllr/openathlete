@@ -174,6 +174,28 @@ describe('TrainingCheckCard', () => {
     );
   });
 
+  it('adds a decimal when whole numbers would hide that a week left its range', () => {
+    render(
+      check({
+        speed: { status: 'SAME', kind: 'power', current: 333, previous: 333 },
+        recovery: {
+          status: 'SAME',
+          variability: null,
+          restingHeartrate: {
+            state: 'LOW',
+            week: 42.57,
+            low: 43.02,
+            high: 45.84,
+            days: 7,
+          },
+        },
+      }),
+    );
+    expect(row('recovery').textContent).toContain(
+      'check_recovery_rhr_low 42.6|43|45.8',
+    );
+  });
+
   it('describes the weeks without a verdict, and notes a run far too long', () => {
     const speed = {
       status: 'SAME' as const,
