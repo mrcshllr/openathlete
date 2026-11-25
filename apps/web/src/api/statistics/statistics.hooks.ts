@@ -150,6 +150,21 @@ export const useTrainingCheckQuery = (athleteId?: number) =>
     staleTime: STALE_TIME,
   });
 
+export const useTrainingCheckHistoryQuery = (athleteId?: number) =>
+  useQuery({
+    queryFn: () => StatisticsAPI.getCheckHistory(athleteId),
+    queryKey: [statisticsKeys.checkHistory, athleteId],
+    staleTime: STALE_TIME,
+  });
+
+export const useTrainingCheckAthletesQuery = (enabled = true) =>
+  useQuery({
+    queryFn: () => StatisticsAPI.getCheckAthletes(),
+    queryKey: [statisticsKeys.checkAthletes],
+    staleTime: STALE_TIME,
+    enabled,
+  });
+
 export const useStatisticsDurabilityQuery = (
   params: StatisticsSectionParams & { sport: SPORT_TYPE },
   enabled: boolean,

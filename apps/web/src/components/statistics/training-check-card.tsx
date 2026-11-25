@@ -1,6 +1,7 @@
 import { useTrainingCheckQuery } from '@/api/statistics';
 import { m } from '@/paraglide/messages';
 import { getLocale } from '@/paraglide/runtime';
+import { getPath } from '@/routes/paths';
 import { getDateLocale } from '@/utils/locales';
 import { cn } from '@/utils/shadcn';
 import {
@@ -11,6 +12,7 @@ import {
   Equal,
   TriangleAlert,
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 import {
   CHECK_MIN_BASELINE_DAYS,
@@ -18,7 +20,9 @@ import {
   CHECK_MIN_RUNS,
   CHECK_MIN_WEEK_DAYS,
   CheckStatus,
+  CheckSummary,
   TrainingCheckDto,
+  checkSummary,
 } from '@openathlete/shared';
 
 import { GarminAttribution } from '../garmin-attribution/garmin-attribution';
@@ -28,9 +32,9 @@ import { Skeleton } from '../ui/skeleton';
 import { MetricInfo } from './metric-info';
 
 // Arrows and words carry the answer; the tints differ in lightness as well
-type Look = CheckStatus | TrainingCheckDto['design']['status'];
-const STATUS: Record<
-  Look,
+export type CheckLook = CheckStatus | TrainingCheckDto['design']['status'];
+export const CHECK_STATUS: Record<
+  CheckLook,
   { icon: typeof ArrowUp; label: () => string; tint: string; text: string }
 > = {
   BETTER: {
@@ -222,11 +226,11 @@ function Row({
   id,
 }: {
   question: string;
-  status: Look;
+  status: CheckLook;
   text: string;
   id: string;
 }) {
-  const { icon: Icon, label, tint, text: tone } = STATUS[status];
+  const { icon: Icon, label, tint, text: tone } = CHECK_STATUS[status];
   return (
     <div
       className="flex items-center gap-3 border-b py-2.5"
@@ -258,7 +262,25 @@ function Row({
  * is missing; then how the last week was coped with, and how the weeks
  * were built. Hidden from those who do not run.
  */
-export function TrainingCheckCard({ athleteId }: { athleteId?: number }) {
+const SUMMARY: Record<CheckSummary, () => string> = {
+  WORKING: m.check_summary_working,
+  WORKING_COSTLY: m.check_summary_working_costly,
+  DECLINING: m.check_summary_declining,
+  DECLINING_TIRED: m.check_summary_declining_tired,
+  MIXED: m.check_summary_mixed,
+  STABLE: m.check_summary_stable,
+  STABLE_TIRED: m.check_summary_stable_tired,
+  OPEN: m.check_summary_open,
+};
+
+export function TrainingCheckCard({
+  athleteId,
+  link = true,
+}: {
+  athleteId?: number;
+  /** Off on the page the link leads to */
+  link?: boolean;
+}) {
   const { data, isLoading } = useTrainingCheckQuery(athleteId);
   if (isLoading) return <Skeleton className="h-40 rounded-md" />;
   if (!data) return null;
@@ -268,6 +290,11 @@ export function TrainingCheckCard({ athleteId }: { athleteId?: number }) {
     durability.counts[0] + durability.counts[1] > 0 ||
     speed.current !== null;
   if (!runs) return null;
+  const summary = checkSummary(
+    [fitness.status, speed.status, durability.status],
+    recovery.status,
+  );
+  const historyPath = `${getPath(['dashboard', 'statistics'])}${athleteId ? `/${athleteId}` : ''}?view=check`;
 
   return (
     <div className="space-y-2 rounded-md border p-3" data-training-check>
@@ -279,6 +306,12 @@ export function TrainingCheckCard({ athleteId }: { athleteId?: number }) {
         <span className="text-xs text-muted-foreground">
           {m.check_period()}
         </span>
+      </div>
+      <div className="rounded-md bg-muted p-3" data-check-summary={summary}>
+        <div className="text-base font-semibold">{SUMMARY[summary]()}</div>
+        <p className="text-xs text-muted-foreground">
+          {m.check_summary_note()}
+        </p>
       </div>
       <div className="border-t">
         <Row
@@ -312,7 +345,14 @@ export function TrainingCheckCard({ athleteId }: { athleteId?: number }) {
           text={designText(design)}
         />
       </div>
-      <p className="text-xs text-muted-foreground">{m.check_flat_note()}</p>
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs text-muted-foreground">
+        <span>{m.check_flat_note()}</span>
+        {link && (
+          <Link to={historyPath} className="font-medium underline">
+            {m.check_history_link()}
+          </Link>
+        )}
+      </div>
       {/* Derived from activities, which Garmin devices may record */}
       <GarminAttribution athleteId={athleteId} />
     </div>

@@ -17,8 +17,12 @@ import {
   StatisticsTerrainDto,
   StatisticsTrendsDto,
   StatisticsVolumeDto,
+  TrainingCheckAthletesDto,
   TrainingCheckDto,
+  TrainingCheckHistoryDto,
   statisticsFiltersSchema,
+  trainingCheckAthletesSchema,
+  trainingCheckHistorySchema,
   trainingCheckSchema,
 } from '@openathlete/shared';
 
@@ -108,6 +112,22 @@ export class StatisticsAPI {
       params: { athleteId },
     });
     return trainingCheckSchema.parse(res.data);
+  }
+
+  /** The figures behind the training check, over half a year (selfhost). */
+  static async getCheckHistory(
+    athleteId?: number,
+  ): Promise<TrainingCheckHistoryDto> {
+    const res = await client.get(routes.statistics.checkHistory, {
+      params: { athleteId },
+    });
+    return trainingCheckHistorySchema.parse(res.data);
+  }
+
+  /** The training check of each athlete a coach follows (selfhost). */
+  static async getCheckAthletes(): Promise<TrainingCheckAthletesDto> {
+    const res = await client.get(routes.statistics.checkAthletes);
+    return trainingCheckAthletesSchema.parse(res.data);
   }
 
   static async getDurability(
