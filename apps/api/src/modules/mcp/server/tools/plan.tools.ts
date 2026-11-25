@@ -89,7 +89,7 @@ export const registerPlanWriteTools: ToolRegistrar = (server, ctx, deps) => {
       inputSchema: {
         athleteId: athleteIdInput,
         templateId: z.number().int().describe('From list_plans'),
-        date: localDate.describe('First day (start) or last day (end)'),
+        date: localDate().describe('First day (start) or last day (end)'),
         anchor: z
           .enum(['start', 'end'])
           .default('start')
