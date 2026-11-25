@@ -3368,7 +3368,7 @@
   "check_speed_worse": "{name} is gedaald, van {previous} naar {current}.",
   "check_speed_same": "{name} is {current}, net als zes weken geleden.",
   "check_speed_open": "{name} is {current}. Voor een vergelijking ontbreken oudere beste inspanningen.",
-  "check_speed_open_none": "Er ontbreken maximale inspanningen. De trainingsfocus laat zien welke.",
+  "check_speed_open_none": "Er ontbreken maximale inspanningen over meerdere afstanden.",
   "check_durability_question": "Houd ik het langer vol?",
   "check_durability_better": "Op lange vlakke lopen drijft je hartslag {current} af in plaats van {previous}.",
   "check_durability_worse": "Op lange vlakke lopen drijft je hartslag {current} af in plaats van {previous}.",

@@ -3368,7 +3368,7 @@
   "check_speed_worse": "{name} caiu, de {previous} para {current}.",
   "check_speed_same": "{name}: {current}, como há seis semanas.",
   "check_speed_open": "{name}: {current}. Faltam melhores marcas mais antigas para comparar.",
-  "check_speed_open_none": "Faltam esforços máximos. O foco do treino mostra quais.",
+  "check_speed_open_none": "Faltam esforços máximos em várias distâncias.",
   "check_durability_question": "Aguento por mais tempo?",
   "check_durability_better": "Nas corridas longas no plano, sua frequência cardíaca deriva {current} em vez de {previous}.",
   "check_durability_worse": "Nas corridas longas no plano, sua frequência cardíaca deriva {current} em vez de {previous}.",

@@ -3368,7 +3368,7 @@
   "check_speed_worse": "{name} in calo, da {previous} a {current}.",
   "check_speed_same": "{name}: {current}, come sei settimane fa.",
   "check_speed_open": "{name}: {current}. Mancano migliori prestazioni più vecchie per il confronto.",
-  "check_speed_open_none": "Mancano prestazioni massimali. Il focus dell’allenamento indica quali.",
+  "check_speed_open_none": "Mancano prestazioni massimali su più distanze.",
   "check_durability_question": "Resisto più a lungo?",
   "check_durability_better": "Nelle corse lunghe in piano la tua frequenza cardiaca deriva del {current} invece del {previous}.",
   "check_durability_worse": "Nelle corse lunghe in piano la tua frequenza cardiaca deriva del {current} invece del {previous}.",

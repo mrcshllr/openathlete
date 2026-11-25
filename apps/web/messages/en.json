@@ -3368,7 +3368,7 @@
   "check_speed_worse": "{name} is down, from {previous} to {current}.",
   "check_speed_same": "{name} is {current}, as six weeks ago.",
   "check_speed_open": "{name} is {current}. Older best efforts are missing for a comparison.",
-  "check_speed_open_none": "Hard best efforts are missing. The training focus shows which.",
+  "check_speed_open_none": "Hard best efforts over several distances are missing.",
   "check_durability_question": "Do I last longer?",
   "check_durability_better": "On long flat runs, your heart rate drifts by {current} instead of {previous}.",
   "check_durability_worse": "On long flat runs, your heart rate drifts by {current} instead of {previous}.",

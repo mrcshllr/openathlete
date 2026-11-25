@@ -3368,7 +3368,7 @@
   "check_speed_worse": "{name} ist gesunken, von {previous} auf {current}.",
   "check_speed_same": "{name} liegt bei {current}, wie vor sechs Wochen.",
   "check_speed_open": "{name} liegt bei {current}. Für den Vergleich fehlen ältere Bestwerte.",
-  "check_speed_open_none": "Es fehlen harte Bestwerte. Der Trainingsfokus zeigt, welche.",
+  "check_speed_open_none": "Es fehlen harte Bestwerte über mehrere Distanzen.",
   "check_durability_question": "Halte ich länger durch?",
   "check_durability_better": "Auf langen flachen Läufen driftet dein Puls um {current} statt um {previous}.",
   "check_durability_worse": "Auf langen flachen Läufen driftet dein Puls um {current} statt um {previous}.",

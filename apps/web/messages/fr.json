@@ -3368,7 +3368,7 @@
   "check_speed_worse": "{name} en baisse, de {previous} à {current}.",
   "check_speed_same": "{name} : {current}, comme il y a six semaines.",
   "check_speed_open": "{name} : {current}. Il manque des meilleurs efforts plus anciens pour comparer.",
-  "check_speed_open_none": "Il manque des efforts maximaux. L’axe d’entraînement indique lesquels.",
+  "check_speed_open_none": "Il manque des efforts maximaux sur plusieurs distances.",
   "check_durability_question": "Est-ce que je tiens plus longtemps ?",
   "check_durability_better": "Sur les longues sorties à plat, votre fréquence cardiaque dérive de {current} au lieu de {previous}.",
   "check_durability_worse": "Sur les longues sorties à plat, votre fréquence cardiaque dérive de {current} au lieu de {previous}.",

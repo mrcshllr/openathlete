@@ -3368,7 +3368,7 @@
   "check_speed_worse": "{name}: spadek z {previous} do {current}.",
   "check_speed_same": "{name}: {current}, jak sześć tygodni temu.",
   "check_speed_open": "{name}: {current}. Do porównania brakuje starszych najlepszych wyników.",
-  "check_speed_open_none": "Brakuje wysiłków na maksimum. Kafelek „Training focus” pokazuje, których.",
+  "check_speed_open_none": "Brakuje wysiłków na maksimum na kilku dystansach.",
   "check_durability_question": "Czy wytrzymuję dłużej?",
   "check_durability_better": "Na długich płaskich biegach Twoje tętno dryfuje o {current} zamiast o {previous}.",
   "check_durability_worse": "Na długich płaskich biegach Twoje tętno dryfuje o {current} zamiast o {previous}.",
