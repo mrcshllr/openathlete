@@ -121,6 +121,33 @@ describe('TrainingFocusCard', () => {
     expect(container.textContent).toContain('9 kJ');
   });
 
+  it('links its figures to their charts, and folds to the focus', () => {
+    state.data = models(
+      slot({ critical: 4, reserve: 180, reliable: true }),
+      slot({ critical: 300, reserve: 9000, reliable: true }, [], false),
+      'THRESHOLD',
+    );
+    render();
+    const charts = [...container.querySelectorAll('[data-focus-charts]')].map(
+      (link) => link.getAttribute('href'),
+    );
+    expect(charts).toEqual([
+      '/dashboard/records',
+      '/dashboard/records',
+      '/dashboard/statistics?view=load',
+    ]);
+
+    act(() =>
+      container.querySelector<HTMLButtonElement>('[data-fold]')?.click(),
+    );
+    expect(container.querySelector('[data-focus]')).toBeNull();
+    expect(container.querySelector('[data-focus-folded]')?.textContent).toBe(
+      'performance_focus_threshold',
+    );
+    expect(container.querySelector('[data-focus-details]')).not.toBeNull();
+    window.localStorage.clear();
+  });
+
   it('says what is missing and plans the short test', () => {
     state.data = models(
       slot({ critical: 4, reserve: 20, reliable: false }, ['SHORT']),

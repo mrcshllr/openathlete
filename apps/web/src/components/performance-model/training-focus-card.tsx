@@ -1,9 +1,10 @@
 import { useCreateEventMutation } from '@/api/event';
 import { useGetPerformanceModelsQuery } from '@/api/record';
+import { useFolded } from '@/hooks/use-folded';
 import { m } from '@/paraglide/messages';
 import { getPath } from '@/routes/paths';
 import { cn } from '@/utils/shadcn';
-import { Check, CircleDashed } from 'lucide-react';
+import { Check, ChevronDown, CircleDashed } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -22,6 +23,11 @@ import {
 import { GarminAttribution } from '../garmin-attribution/garmin-attribution';
 import { MetricInfo } from '../statistics/metric-info';
 import { Button } from '../ui/button';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '../ui/collapsible';
 import { SectionLabel } from '../ui/section-label';
 import { Skeleton } from '../ui/skeleton';
 import {
@@ -35,22 +41,38 @@ import {
 
 const DAY = 24 * 3600 * 1000;
 
+interface Charts {
+  to: string;
+  page: string;
+}
+
 function Row({
   label,
   hint,
   value,
   note,
+  charts,
 }: {
   label: string;
   hint: string;
   value: string;
   note?: string;
+  /** The page that charts this figure, and its name */
+  charts: Charts;
 }) {
   return (
     <div className="flex items-center justify-between gap-3 border-b py-2.5">
       <div className="min-w-0">
         <div className="text-sm font-medium">{label}</div>
         <div className="text-xs text-muted-foreground">{hint}</div>
+        <Link
+          to={charts.to}
+          aria-label={m.card_charts_link({ page: charts.page })}
+          className="text-xs text-muted-foreground underline"
+          data-focus-charts
+        >
+          {charts.page}
+        </Link>
       </div>
       <div className="flex shrink-0 items-baseline gap-2">
         <span className="text-lg font-semibold">{value}</span>
@@ -132,10 +154,15 @@ function Rows({
   data,
   measure,
   model,
+  records,
+  load,
 }: {
   data: PerformanceModelsDto;
   measure: Measure;
   model: PerformanceModelDto | null;
+  /** Where the model is drawn, and where the drift of the long runs is */
+  records: Charts;
+  load: Charts;
 }) {
   const pace = measure === 'pace';
   const { durability } = data.running;
@@ -151,6 +178,7 @@ function Rows({
             : m.performance_critical_power_hint()
         }
         value={model ? formatCritical(measure, model.critical) : '–'}
+        charts={records}
       />
       <Row
         label={
@@ -162,6 +190,7 @@ function Rows({
             : m.performance_reserve_power_hint()
         }
         value={model ? formatReserve(measure, model.reserve) : '–'}
+        charts={records}
       />
       <Row
         label={m.performance_durability()}
@@ -171,6 +200,7 @@ function Rows({
             : m.performance_durability_none()
         }
         value={durability ? formatPercent(durability.value) : '–'}
+        charts={load}
         note={
           durability
             ? decouplingLevel(durability.value) === 'steady'
@@ -222,6 +252,14 @@ function Bucket({
       </span>
     </div>
   );
+}
+
+function missingTitle(slot: PerformanceModelSlotDto): string {
+  if (slot.missing.length === 2) return m.performance_missing_title_both();
+  // The short test first: it is the one most training lacks
+  return slot.missing.includes('SHORT') || slot.missing.length === 0
+    ? m.performance_missing_title_short()
+    : m.performance_missing_title_long();
 }
 
 function Missing({
@@ -293,13 +331,7 @@ function Missing({
     <div className="grid gap-4 md:grid-cols-2" data-focus-missing>
       <div className="space-y-3">
         <div className="space-y-1">
-          <div className="text-base font-semibold">
-            {slot.missing.length === 2
-              ? m.performance_missing_title_both()
-              : short
-                ? m.performance_missing_title_short()
-                : m.performance_missing_title_long()}
-          </div>
+          <div className="text-base font-semibold">{missingTitle(slot)}</div>
           <p className="text-sm text-muted-foreground">
             {unreliable
               ? m.performance_unreliable_text()
@@ -357,58 +389,100 @@ function Missing({
  * grade-adjusted bests of the last weeks. The switch shows the model on
  * pace or on power. When the bests give no model, or the short ones were
  * not all out, it says which is missing and offers the test that fills it.
- * It spans the width of its block: two columns where there is room.
+ * It spans the width of its block: two columns where there is room. Folded,
+ * it keeps the focus and the link to the model.
  */
 export function TrainingFocusCard({ athleteId }: { athleteId?: number }) {
   const { data, isLoading } = useGetPerformanceModelsQuery(athleteId);
   const [chosen, setChosen] = useState<Measure | null>(null);
+  const { folded, setFolded } = useFolded('training-focus');
 
   if (isLoading) return <Skeleton className="h-40 rounded-md" />;
   if (!data) return null;
   const { focus, profile } = data.running;
   // Pace first: critical speed is what names the focus
   const measure = chosen ?? 'pace';
-  const recordsPath = `${getPath(['dashboard', 'records'])}${athleteId ? `/${athleteId}` : ''}`;
+  const of = athleteId ? `/${athleteId}` : '';
+  const records = {
+    to: `${getPath(['dashboard', 'records'])}${of}`,
+    page: m.records(),
+  };
+  const load = {
+    to: `${getPath(['dashboard', 'statistics'])}${of}?view=load`,
+    page: m.statistics_view_load(),
+  };
 
   return (
-    <div className="space-y-3 rounded-md border p-3" data-training-focus>
+    <Collapsible
+      open={!folded}
+      onOpenChange={(next) => setFolded(!next)}
+      className="space-y-3 rounded-md border p-3"
+      data-training-focus
+    >
       <div className="flex items-center justify-between gap-3">
         <span className="flex items-center gap-1">
           <SectionLabel>{m.performance_focus_title()}</SectionLabel>
           <MetricInfo metric="trainingFocus" />
         </span>
-        {focus && <MeasureSwitch measure={measure} onChange={setChosen} />}
+        <span className="flex items-center gap-1">
+          {focus && !folded && (
+            <MeasureSwitch measure={measure} onChange={setChosen} />
+          )}
+          <CollapsibleTrigger
+            data-fold
+            aria-label={folded ? m.card_details_show() : m.card_details_hide()}
+            className="group flex size-9 cursor-pointer items-center justify-center rounded-md hover:bg-muted"
+          >
+            <ChevronDown
+              className="size-4 transition-transform group-data-[state=open]:rotate-180"
+              aria-hidden="true"
+            />
+          </CollapsibleTrigger>
+        </span>
       </div>
-      {focus && profile ? (
-        <div className="grid gap-4 md:grid-cols-2">
-          <div className="space-y-3">
-            <div className="space-y-1">
-              <div className="text-xl font-semibold" data-focus={focus}>
-                {focusLabel[focus]()}
-              </div>
-              <p className="text-sm text-muted-foreground">
-                {focusReason[focus]()}
-              </p>
-            </div>
-            <Profile profile={profile} />
-          </div>
-          <Rows
-            data={data}
-            measure={measure}
-            model={data.running[measure].model}
-          />
+      {folded && (
+        <div className="text-base font-semibold" data-focus-folded>
+          {focus ? focusLabel[focus]() : missingTitle(data.running.pace)}
         </div>
-      ) : (
-        <Missing data={data} athleteId={athleteId} />
       )}
+      <CollapsibleContent>
+        {focus && profile ? (
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <div className="text-xl font-semibold" data-focus={focus}>
+                  {focusLabel[focus]()}
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  {focusReason[focus]()}
+                </p>
+              </div>
+              <Profile profile={profile} />
+            </div>
+            <Rows
+              data={data}
+              measure={measure}
+              model={data.running[measure].model}
+              records={records}
+              load={load}
+            />
+          </div>
+        ) : (
+          <Missing data={data} athleteId={athleteId} />
+        )}
+      </CollapsibleContent>
       <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
         <span>{m.performance_based_on({ days: data.days })}</span>
-        <Link to={recordsPath} className="font-medium underline">
+        <Link
+          to={records.to}
+          className="font-medium underline"
+          data-focus-details
+        >
           {m.performance_details_link()}
         </Link>
       </div>
       {/* Derived from activities, which Garmin devices may record */}
       <GarminAttribution athleteId={athleteId} />
-    </div>
+    </Collapsible>
   );
 }
