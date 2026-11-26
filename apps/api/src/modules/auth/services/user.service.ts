@@ -43,6 +43,7 @@ import {
 } from 'src/modules/analytics/analytics.service';
 import { opensAClub } from 'src/modules/club/club-join-token';
 import { emailTransportKind } from 'src/modules/notification/services/email-transport.service';
+import { ResendContactsService } from 'src/modules/notification/services/resend-contacts.service';
 import {
   PrismaService,
   UserRow,
@@ -77,6 +78,7 @@ export class UserService {
     private coachInvitationService: CoachInvitationService,
     private readonly accountDeletionService: AccountDeletionService,
     @Optional() private readonly analytics?: AnalyticsService,
+    @Optional() private readonly resendContacts?: ResendContactsService,
   ) {
     this.HASH_PEPPER = this.configService.get('HASH_PEPPER')
       ? Buffer.from(this.configService.get('HASH_PEPPER'))
@@ -480,6 +482,10 @@ export class UserService {
       );
     }
 
+    // Ticked on the sign-up form: the person joins the news contacts
+    // Not awaited: a slow Resend must never hold up the request (sync never throws)
+    if (emailNews) void this.resendContacts?.sync(created.userId);
+
     return created;
   };
 
@@ -559,6 +565,9 @@ export class UserService {
       await this.analytics?.capture(user.userId, 'weekly_email_unsubscribed', {
         from: 'settings',
       });
+    }
+    if (data.emailNews !== undefined) {
+      void this.resendContacts?.sync(user.userId);
     }
     return updated;
   };
