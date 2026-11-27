@@ -11,6 +11,9 @@ import {
 
 import { RecordExclusionsCard } from './records-side-cards';
 
+vi.mock('@/hooks/use-units', () => ({
+  useUnits: () => ({ unitSystem: 'METRIC' }),
+}));
 // Every message renders as its key
 vi.mock('@/paraglide/messages', () => ({
   m: new Proxy({}, { get: (_target, key) => () => String(key) }),

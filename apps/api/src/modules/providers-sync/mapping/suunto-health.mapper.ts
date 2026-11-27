@@ -207,24 +207,51 @@ export function mapSuuntoActivitySamples(
   return metrics;
 }
 
+/** The time in bed of a sleep segment, in epoch milliseconds */
+function bedInterval(entry: SuuntoSleepEntry): [number, number] | null {
+  const data = entry.entryData ?? {};
+  const start = new Date(data.BedtimeStart ?? entry.timestamp).getTime();
+  if (!Number.isFinite(start)) return null;
+  const bedtimeEnd = data.BedtimeEnd
+    ? new Date(data.BedtimeEnd).getTime()
+    : NaN;
+  const end = Number.isFinite(bedtimeEnd)
+    ? bedtimeEnd
+    : start + (data.Duration ?? 0) * 1000;
+  return end > start ? [start, end] : null;
+}
+
 /**
- * Suunto sends a sleep again each time the watch syncs it: the same night
- * then comes many times in one answer, and adding them up gave nights of
- * a hundred hours. One entry per sleep is kept, the last one sent.
+ * Suunto can send the same night several times, once per sync of the watch:
+ * adding the copies up gave nights of 40 or 100 hours. A segment counts once
+ * per SleepId, and one that overlaps a longer segment in time is the same
+ * sleep sent again, so the longest stays.
  */
-function uniqueSleeps(entries: SuuntoSleepEntry[]): SuuntoSleepEntry[] {
-  const sleeps = new Map<string, SuuntoSleepEntry>();
-  for (const entry of entries) {
-    const data = entry.entryData ?? {};
-    const key =
-      data.SleepId !== undefined
-        ? `id:${data.SleepId}`
-        : data.BedtimeStart || data.BedtimeEnd
-          ? `bed:${data.BedtimeStart ?? ''}|${data.BedtimeEnd ?? ''}`
-          : `at:${entry.timestamp}`;
-    sleeps.set(key, entry);
+function distinctSleepSegments(
+  entries: SuuntoSleepEntry[],
+): SuuntoSleepEntry[] {
+  const longestFirst = [...entries].sort(
+    (a, b) => (b.entryData?.Duration ?? 0) - (a.entryData?.Duration ?? 0),
+  );
+  const ids = new Set<number>();
+  const intervals: [number, number][] = [];
+  const kept = new Set<SuuntoSleepEntry>();
+  for (const entry of longestFirst) {
+    const id = entry.entryData?.SleepId;
+    if (finite(id) && ids.has(id)) continue;
+    const interval = bedInterval(entry);
+    if (
+      interval &&
+      intervals.some(([start, end]) => interval[0] < end && start < interval[1])
+    ) {
+      continue;
+    }
+    if (finite(id)) ids.add(id);
+    if (interval) intervals.push(interval);
+    kept.add(entry);
   }
-  return [...sleeps.values()];
+  // In the order Suunto sent them
+  return entries.filter((entry) => kept.has(entry));
 }
 
 /**
@@ -236,7 +263,7 @@ export function mapSuuntoSleep(
   entries: SuuntoSleepEntry[],
 ): SuuntoMetricRecord[] {
   const nights = groupByDay(
-    uniqueSleeps(entries ?? []),
+    distinctSleepSegments(entries ?? []),
     (entry) =>
       suuntoLocalDay(entry.entryData?.BedtimeEnd) ??
       suuntoLocalDay(entry.timestamp),

@@ -11,6 +11,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
+import { useUnits } from '@/hooks/use-units';
 import { m } from '@/paraglide/messages';
 import { RECORD_EXCLUSIONS_COLLAPSED } from '@/utils/local-storage';
 import { ChevronDown } from 'lucide-react';
@@ -20,6 +21,7 @@ import {
   RecordEffortDto,
   RecordExclusionDto,
   SPORT_TYPE,
+  UnitSystem,
 } from '@openathlete/shared';
 
 import {
@@ -48,6 +50,7 @@ export function LatestRecordsCard({
   dateFormat,
   onSelect,
 }: LatestP) {
+  const units = useUnits();
   return (
     <Card data-latest-records>
       <CardHeader>
@@ -63,7 +66,12 @@ export function LatestRecordsCard({
           const metric = RECORD_METRICS.find((x) => x.type === record.type);
           const position = recordPosition(record);
           if (!metric || position === null) return null;
-          const { value, unit } = formatRecordValue(metric, record, sport);
+          const { value, unit } = formatRecordValue(
+            metric,
+            record,
+            sport,
+            units.unitSystem,
+          );
           return (
             <button
               key={record.recordId}
@@ -72,7 +80,8 @@ export function LatestRecordsCard({
               onClick={() => onSelect(metric, position)}
             >
               <span className="font-medium group-hover:underline">
-                {metric.title(sport)} {formatRecordPosition(metric, position)}
+                {metric.title(sport)}{' '}
+                {formatRecordPosition(metric, position, units.unitSystem)}
               </span>{' '}
               <span className="tabular-nums">{value}</span>{' '}
               <span className="text-xs text-muted-foreground tabular-nums">
@@ -94,13 +103,14 @@ export function LatestRecordsCard({
 function exclusionScope(
   exclusion: RecordExclusionDto,
   sport: SPORT_TYPE,
+  unitSystem: UnitSystem,
 ): string {
   const metric = RECORD_METRICS.find((x) => x.type === exclusion.type);
   if (!metric) return m.records_exclusion_activity();
   const position = exclusion.distance ?? exclusion.duration;
   return position === null
     ? metric.title(sport)
-    : `${metric.title(sport)} ${formatRecordPosition(metric, position)}`;
+    : `${metric.title(sport)} ${formatRecordPosition(metric, position, unitSystem)}`;
 }
 
 interface ExclusionsP {
@@ -130,6 +140,7 @@ export function RecordExclusionsCard({
   dateFormat,
   onRestore,
 }: ExclusionsP) {
+  const units = useUnits();
   const [collapsed, setCollapsed] = useState(readCollapsed);
   const toggle = (open: boolean) => {
     setCollapsed(!open);
@@ -179,7 +190,7 @@ export function RecordExclusionsCard({
                     {exclusion.activityName}
                   </span>
                   <span className="block truncate text-xs text-muted-foreground">
-                    {exclusionScope(exclusion, sport)} ·{' '}
+                    {exclusionScope(exclusion, sport, units.unitSystem)} ·{' '}
                     {dateFormat.format(new Date(exclusion.date))}
                   </span>
                 </span>

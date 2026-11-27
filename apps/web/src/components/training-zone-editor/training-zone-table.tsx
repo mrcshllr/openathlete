@@ -6,6 +6,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { useUnits } from '@/hooks/use-units';
 import { m } from '@/paraglide/messages';
 import { SettingsPanel } from '@/views/dashboard/settings-view/settings-section';
 import { useMemo } from 'react';
@@ -26,6 +27,12 @@ interface TrainingZoneTableProps {
 }
 
 export function TrainingZoneTable({ zones }: TrainingZoneTableProps) {
+  const units = useUnits();
+  // Paces are stored in minutes per km: 5.5 reads 5:30, per mile in imperial
+  const formatBound = (type: TrainingZone['type'], value: number) =>
+    type === TRAINING_ZONE_TYPE.PACE
+      ? formatPace(value * units.paceFactor)
+      : value;
   const displayData = useMemo(() => {
     const sportConfigs = new Map<
       string,
@@ -88,11 +95,6 @@ export function TrainingZoneTable({ zones }: TrainingZoneTableProps) {
                       const isLastZone =
                         config.zones.length === zones.length &&
                         idx === config.zones.length - 1;
-                      // Paces are stored in minutes per km: 5.5 reads 5:30
-                      const limit = (value: number) =>
-                        item.zone.type === TRAINING_ZONE_TYPE.PACE
-                          ? formatPace(value)
-                          : value;
                       return (
                         <TableRow key={idx}>
                           <TableCell>{item.zone.name}</TableCell>
@@ -100,10 +102,10 @@ export function TrainingZoneTable({ zones }: TrainingZoneTableProps) {
                             {item.zone.description}
                           </TableCell>
                           <TableCell className="text-right font-mono">
-                            {limit(item.value.min)}
+                            {formatBound(item.zone.type, item.value.min)}
                           </TableCell>
                           <TableCell className="text-right font-mono">
-                            {limit(item.value.max)}
+                            {formatBound(item.zone.type, item.value.max)}
                             {isLastZone &&
                               item.zone.type !==
                                 TRAINING_ZONE_TYPE.HEARTRATE && (
